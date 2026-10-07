@@ -38,3 +38,15 @@ def test_breakout_m5_has_no_lookahead(cut):
     # una señal M5 aparece solo en la barra M1 que cierra la barra M5 (minuto 4, 9, ...)
     minutes = BARS.index.minute.to_numpy()
     assert set(minutes[fl | fs] % 5) <= {4}
+
+
+@pytest.mark.parametrize("name,params", [("sweep", {}), ("sweep", {"tf": "5min"}), ("orb", {})])
+def test_new_setups_have_no_lookahead(name, params):
+    comp, p = comps.resolve(name, params)
+    fl, fs, fstop = comp.fn(comps.Context(BARS, SPEC), **p)
+    assert (fl | fs).sum() > 0
+    for cut in (2003, 2777):
+        tl, ts, tstop = comp.fn(comps.Context(BARS.iloc[:cut], SPEC), **p)
+        assert np.array_equal(fl[:cut], tl) and np.array_equal(fs[:cut], ts)
+        sig = fl[:cut] | fs[:cut]
+        assert np.allclose(fstop[:cut][sig], tstop[sig])

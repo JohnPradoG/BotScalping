@@ -113,6 +113,57 @@ def setup_random(ctx: Context, prob: float, sl_atr: float, seed: int, tf: str):
     return hit & side, hit & ~side, stop
 
 
+def _atr_tf(ctx: Context, tf: str) -> pd.Series:
+    """ATR del marco `tf` llevado a M1 sin lookahead."""
+    if pd.Timedelta(tf) == pd.Timedelta("1min"):
+        return ctx.atr()
+    return ctx.cached(("atr_tf", tf), lambda: ind.align_higher_tf(ind.atr(ind.resample_ohlc(ctx.bars, tf)), ctx.bars.index, tf))
+
+
+def _emit(ctx: Context, cond: pd.Series, tf: str) -> np.ndarray:
+    if pd.Timedelta(tf) == pd.Timedelta("1min"):
+        return _arr(cond)
+    return ind.align_higher_tf_events(cond, ctx.bars.index, tf)
+
+
+@register("sweep", "setup",
+          "Barrida con mecha: la vela perfora el mínimo (máximo) de las N velas previas y cierra de vuelta dentro "
+          "→ entrada en contra de la barrida. Stop detrás de la mecha (+buffer), con mínimo min_stop_atr·ATR.",
+          lookback=10, tf="1min", close_pos=0.5, buffer_atr=0.1, min_stop_atr=0.5)
+def setup_sweep(ctx: Context, lookback: int, tf: str, close_pos: float, buffer_atr: float, min_stop_atr: float):
+    b = ctx.bars if pd.Timedelta(tf) == pd.Timedelta("1min") else ind.resample_ohlc(ctx.bars, tf)
+    a = ind.atr(b)
+    prev_lo = b["low"].rolling(lookback).min().shift()
+    prev_hi = b["high"].rolling(lookback).max().shift()
+    rng = (b["high"] - b["low"]).replace(0, np.nan)
+    pos = (b["close"] - b["low"]) / rng
+    long_c = (b["low"] < prev_lo) & (b["close"] > prev_lo) & (pos >= close_pos)
+    short_c = (b["high"] > prev_hi) & (b["close"] < prev_hi) & (pos <= 1 - close_pos)
+    d_long = np.maximum(b["close"] - b["low"] + buffer_atr * a, min_stop_atr * a)
+    d_short = np.maximum(b["high"] - b["close"] + buffer_atr * a, min_stop_atr * a)
+    dist = d_long.where(long_c, d_short.where(short_c))
+    if pd.Timedelta(tf) != pd.Timedelta("1min"):
+        dist = ind.align_higher_tf(dist, ctx.bars.index, tf)
+    return _emit(ctx, long_c, tf), _emit(ctx, short_c, tf), dist.to_numpy(float)
+
+
+@register("orb", "setup",
+          "Ruptura del rango de apertura: primer cierre M1 de la sesión por encima (debajo) del máximo (mínimo) de los "
+          "primeros `minutes`. Stop = sl_atr·ATR(atr_tf).",
+          minutes=15, sl_atr=1.0, atr_tf="5min")
+def setup_orb(ctx: Context, minutes: int, sl_atr: float, atr_tf: str):
+    sess = ctx.session()
+    orng = ind.opening_range(ctx.bars, sess, minutes)
+    c = ctx.bars["close"]
+    key = sess["session_date"].to_numpy()
+    up = (c > orng["or_high"]).fillna(False)
+    dn = (c < orng["or_low"]).fillna(False)
+    first_up = up & (up.astype(int).groupby(key).cumsum() == 1)
+    first_dn = dn & (dn.astype(int).groupby(key).cumsum() == 1)
+    stop = (_atr_tf(ctx, atr_tf) * sl_atr).to_numpy()
+    return _arr(first_up), _arr(first_dn), stop
+
+
 # -------------------------------------------------------------------------- filtros
 @register("trend_m5", "filter", "Tendencia M5: cierre M5 por encima/debajo de su EMA (sin lookahead).", ema=20)
 def f_trend_m5(ctx: Context, ema: int) -> LongShort:

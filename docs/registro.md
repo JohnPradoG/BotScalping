@@ -273,3 +273,136 @@ Decisión / siguiente hipótesis:
 | baseline + spread | 223 | 0.417 | 0.163 | -0.014 | 0.349 | 0.040 | 1.289 | 9.928 | 0.164 | -0.040 | 0.227 | ➖ sin evidencia |
 
 </details>
+
+### 2026-10-07 · XAUUSD y NAS100 · Búsqueda amplia (`python -m botscalping.search`)
+
+**Hipótesis (idea de John):** entrar en las mechas (barridas de liquidez) o en la ruptura del rango de apertura, con gestión 1:1 a 1:2, da una ventaja neta.
+
+**Qué se probó (in-sample):** 120 variantes por instrumento: `sweep` (barrida con mecha y cierre de vuelta; M1/M5/M15; lookback 10/20), `orb` (rango de apertura 15/30 min; stop 1–2·ATR M5), `breakout` M5/M15 como referencia. Gestión 1:1, 1:1.5, 1:2. Ventanas: apertura NY 2 h, sesión NY, apertura Londres 2 h, todo el día. Además, momentum intradía (señal de la primera media hora → operar la última media hora).
+
+**Resultado:**
+
+- **Netas de costes: 0 de 240 variantes con expectativa positiva estable.** Ninguna candidata llegó a la validación out-of-sample. La mejor (ruptura M15, apertura NY, 1:1.5) queda en −0.002 R.
+- **Sin costes**, las mechas en M1 sí tienen una ventaja pequeña: +0.02 a +0.04 R (oro, sesión NY: +0.037 R, IC [+0.019, +0.056]; NAS todo el día +0.041 R). Es la única señal consistente en los dos activos (Holm p ≈ 0.06). Las barridas en M15 de Londres en NAS dan +0.13 R bruto con solo ~800 operaciones (no significativo tras Holm).
+- Esa ventaja **desaparece al agrandar el stop**: con stop mínimo de 3–5·ATR M1 queda en ≈ 0 R bruto. Solo existe a escala de ~0.6 $ (oro) / ~5–9 pts (NAS), donde el coste es 0.5–0.8 R, unas 15–20 veces la ventaja.
+- Momentum intradía: sin ventaja in-sample (oro −0.23 $/día neto, NAS −5.6 pts/día).
+
+**Qué demuestra:** con los costes de Exness Standard, ninguna de estas ideas de scalping en M1–M15 gana. La intuición de las mechas tiene algo real, pero vale ~0.02 $ por operación en oro frente a ~0.3 $ de coste.
+
+**Qué NO demuestra:** que no exista ventaja con otra información (ticks, libro de órdenes, noticias) o en horizontes más largos donde el coste pesa poco.
+
+**Nota sobre el lotaje:** el tamaño multiplica el resultado por operación pero no cambia su signo. Con expectativa negativa, más lotaje solo acelera la pérdida.
+
+<details><summary>Salidas</summary>
+
+```
+
+## XAUUSD: 120 variantes probadas, 0 candidatas estables, 0 significativas tras Holm
+                                                        variante    n  win_rate  expectancy_r  ci_low  p_gt_0  p_holm  años_positivos  max_dd_r
+     breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:1.5 1674     0.452        -0.014  -0.060   0.725     1.0               0    41.575
+       breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:1 2008     0.490        -0.026  -0.063   0.909     1.0               0    61.767
+breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 1033     0.456        -0.002  -0.065   0.514     1.0               2    31.136
+       breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:2 1535     0.438        -0.018  -0.068   0.756     1.0               1    42.538
+  breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1 1147     0.496        -0.017  -0.068   0.728     1.0               1    48.378
+   breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:1.5 6132     0.408        -0.044  -0.070   0.998     1.0               1   317.966
+     breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:1 7646     0.477        -0.050  -0.073   1.000     1.0               1   428.653
+     breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:2 5504     0.372        -0.050  -0.083   0.998     1.0               1   326.355
+       orb {'minutes': 30, 'sl_atr': 2.0} | apertura_NY_2h | 1:1 1002     0.486        -0.027  -0.086   0.828     1.0               1    53.896
+   breakout {'tf': '5min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1 2473     0.476        -0.053  -0.087   0.998     1.0               0   137.839
+   breakout {'tf': '5min', 'sl_atr': 2.0} | apertura_NY_2h | 1:2 1875     0.391        -0.038  -0.091   0.922     1.0               0    80.109
+  breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:2  990     0.429        -0.027  -0.092   0.786     1.0               1    46.484
+ breakout {'tf': '5min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 2063     0.414        -0.048  -0.095   0.976     1.0               0   104.421
+            orb {'minutes': 30, 'sl_atr': 2.0} | sesion_NY | 1:1 1210     0.477        -0.046  -0.098   0.958     1.0               1    81.050
+     orb {'minutes': 30, 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 1001     0.419        -0.044  -0.113   0.901     1.0               1    52.768
+Ninguna candidata para validar.
+
+real	1m48.168s
+user	1m37.628s
+sys	0m7.467s
+
+
+## NAS100: 120 variantes probadas, 0 candidatas estables, 0 significativas tras Holm
+                                                        variante    n  win_rate  expectancy_r  ci_low  p_gt_0  p_holm  años_positivos  max_dd_r
+       breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:2 2348     0.390        -0.021  -0.069   0.800     1.0               2   101.048
+  breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1 1608     0.488        -0.028  -0.076   0.873     1.0               2    80.771
+  breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:2 1331     0.365        -0.006  -0.076   0.558     1.0               2    66.956
+       breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:1 3124     0.478        -0.046  -0.082   0.994     1.0               1   169.870
+     breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:1.5 2612     0.415        -0.048  -0.091   0.986     1.0               0   144.425
+breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 1429     0.404        -0.030  -0.092   0.838     1.0               1    75.243
+     breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:2 5821     0.350        -0.088  -0.119   1.000     1.0               0   538.726
+     breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:1 7849     0.447        -0.106  -0.128   1.000     1.0               0   841.623
+        breakout {'tf': '5min', 'sl_atr': 2.0} | sesion_NY | 1:1 6934     0.451        -0.112  -0.135   1.000     1.0               0   781.961
+      breakout {'tf': '5min', 'sl_atr': 2.0} | sesion_NY | 1:1.5 5656     0.385        -0.106  -0.135   1.000     1.0               0   609.972
+   breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:1.5 6466     0.380        -0.109  -0.136   1.000     1.0               0   712.849
+ breakout {'tf': '5min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 2816     0.381        -0.095  -0.137   1.000     1.0               0   272.254
+     orb {'minutes': 30, 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 1020     0.392        -0.068  -0.140   0.970     1.0               1    91.892
+   breakout {'tf': '5min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1 3324     0.448        -0.111  -0.143   1.000     1.0               0   372.401
+          orb {'minutes': 30, 'sl_atr': 2.0} | sesion_NY | 1:1.5 1263     0.386        -0.087  -0.147   0.996     1.0               1   131.779
+Ninguna candidata para validar.
+
+real	1m46.122s
+user	1m35.236s
+sys	0m7.651s
+
+XAUUSD SIN COSTES: 120 variantes; exp>0: 64 ; ci_low>0: 10 ; Holm<0.05: 0
+                                                        variante      n  win_rate  expectancy_r  ci_low  p_holm  años_positivos
+          sweep {'tf': '1min', 'lookback': 20} | sesion_NY | 1:2  23198     0.348         0.037   0.019   0.060               4
+          sweep {'tf': '1min', 'lookback': 10} | sesion_NY | 1:2  30012     0.346         0.031   0.015   0.060               4
+        sweep {'tf': '1min', 'lookback': 10} | todo_el_dia | 1:2 102878     0.344         0.022   0.013   0.060               2
+        sweep {'tf': '1min', 'lookback': 20} | todo_el_dia | 1:2  80595     0.343         0.019   0.009   0.117               2
+        sweep {'tf': '1min', 'lookback': 20} | sesion_NY | 1:1.5  24283     0.410         0.022   0.006   0.232               3
+     sweep {'tf': '1min', 'lookback': 20} | apertura_NY_2h | 1:2   7509     0.347         0.033   0.002   1.000               4
+        sweep {'tf': '1min', 'lookback': 10} | sesion_NY | 1:1.5  32677     0.407         0.014   0.001   1.000               3
+sweep {'tf': '1min', 'lookback': 10} | apertura_Londres_2h | 1:2   9607     0.344         0.028   0.001   1.000               2
+
+NAS100 SIN COSTES: 120 variantes; exp>0: 65 ; ci_low>0: 11 ; Holm<0.05: 0
+                                                         variante      n  win_rate  expectancy_r  ci_low  p_holm  años_positivos
+         sweep {'tf': '1min', 'lookback': 20} | todo_el_dia | 1:2  77263     0.350         0.041   0.031   0.060               3
+sweep {'tf': '15min', 'lookback': 20} | apertura_Londres_2h | 1:2    812     0.379         0.133   0.029   0.406               4
+         sweep {'tf': '1min', 'lookback': 10} | todo_el_dia | 1:2  99757     0.348         0.037   0.028   0.060               3
+sweep {'tf': '15min', 'lookback': 10} | apertura_Londres_2h | 1:2    930     0.373         0.114   0.024   0.741               4
+ sweep {'tf': '5min', 'lookback': 20} | apertura_Londres_2h | 1:2   1721     0.370         0.086   0.023   0.518               4
+       sweep {'tf': '1min', 'lookback': 20} | todo_el_dia | 1:1.5  80478     0.412         0.025   0.016   0.060               3
+       sweep {'tf': '1min', 'lookback': 10} | todo_el_dia | 1:1.5 108029     0.411         0.024   0.016   0.060               3
+        breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:2   2314     0.416         0.060   0.010   1.000               3
+
+XAUUSD
+ min_stop_atr   ventana  tipo     n  stop_med    exp  ci_lo  ci_hi
+          0.5 sesion_NY bruto 22886     0.596  0.038  0.020  0.056
+          0.5 sesion_NY  neto 24286     0.587 -0.542 -0.558 -0.526
+          0.5      todo bruto 79330     0.506  0.018  0.008  0.027
+          0.5      todo  neto 84832     0.495 -0.646 -0.654 -0.639
+          1.5 sesion_NY bruto 16067     1.071  0.040  0.018  0.064
+          1.5 sesion_NY  neto 18113     1.009 -0.304 -0.323 -0.285
+          1.5      todo bruto 58785     0.819  0.010 -0.002  0.022
+          1.5      todo  neto 67814     0.775 -0.414 -0.424 -0.405
+          3.0 sesion_NY bruto  6882     2.277  0.013 -0.017  0.044
+          3.0 sesion_NY  neto  7338     2.219 -0.152 -0.182 -0.121
+          3.0      todo bruto 25811     1.618  0.008 -0.008  0.024
+          3.0      todo  neto 28399     1.544 -0.220 -0.234 -0.205
+          5.0 sesion_NY bruto  4482     3.850 -0.014 -0.046  0.017
+          5.0 sesion_NY  neto  4613     3.784 -0.119 -0.147 -0.090
+          5.0      todo bruto 15486     2.729  0.002 -0.017  0.020
+          5.0      todo  neto 16304     2.665 -0.132 -0.151 -0.115
+
+NAS100
+ min_stop_atr   ventana  tipo     n  stop_med    exp  ci_lo  ci_hi
+          0.5 sesion_NY bruto 25136     8.998  0.002 -0.015  0.021
+          0.5 sesion_NY  neto 26655     8.866 -0.553 -0.566 -0.540
+          0.5      todo bruto 76194     4.666  0.040  0.031  0.051
+          0.5      todo  neto 82786     4.512 -0.814 -0.820 -0.808
+          1.5 sesion_NY bruto 18240    15.489 -0.015 -0.034  0.007
+          1.5 sesion_NY  neto 21019    14.841 -0.360 -0.376 -0.342
+          1.5      todo bruto 56884     7.758  0.015  0.004  0.027
+          1.5      todo  neto 71739     7.018 -0.661 -0.668 -0.653
+          3.0 sesion_NY bruto  8195    30.804 -0.008 -0.037  0.022
+          3.0 sesion_NY  neto  8930    30.129 -0.191 -0.220 -0.168
+          3.0      todo bruto 26214    15.268  0.005 -0.011  0.022
+          3.0      todo  neto 35465    12.022 -0.471 -0.482 -0.458
+          5.0 sesion_NY bruto  5036    50.411 -0.013 -0.044  0.022
+          5.0 sesion_NY  neto  5288    49.760 -0.121 -0.151 -0.089
+          5.0      todo bruto 15651    25.604  0.015 -0.003  0.035
+          5.0      todo  neto 18671    22.143 -0.296 -0.312 -0.280
+
+```
+</details>

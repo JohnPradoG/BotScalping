@@ -41,6 +41,8 @@ tests/            motor, ausencia de lookahead en cada componente, estadística
 |---|---|---|
 | `breakout` | setup | Baseline: ruptura del rango de N barras, stop = k·ATR |
 | `random` | setup | Benchmark aleatorio |
+| `sweep` | setup | Barrida con mecha: perfora el extremo de N velas y cierra dentro → entrada en contra |
+| `orb` | setup | Primer cierre fuera del rango de apertura de NY |
 | `trend_m5` | filtro | Cierre M5 vs EMA M5 (alineado sin mirar el futuro) |
 | `ema_9_20` | filtro | EMA 9 vs EMA 20 en M1 |
 | `vwap` | filtro | Precio vs VWAP anclado a la apertura |
@@ -101,6 +103,12 @@ python -m botscalping.experiment configs/xauusd.toml --mode ladder --synthetic
 ```
 
 Los resultados quedan en `results/<nombre>/` (CSV + informe Markdown).
+
+Búsqueda amplia de setups × gestión × sesión (ordena con in-sample, corrige por nº de pruebas y valida solo las mejores en out-of-sample):
+
+```bash
+python -m botscalping.search configs/xauusd.toml configs/nas100.toml --top 5
+```
 
 ## Limitaciones conocidas
 
