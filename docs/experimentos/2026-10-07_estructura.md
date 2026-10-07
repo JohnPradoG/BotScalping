@@ -54,3 +54,16 @@ Se elige solo con in-sample. Fuera de muestra se muestra para ver si aguanta. $ 
 - **Lección:** ajustar el stop (entrar "más preciso") es lo que más daño hace. Lo que ayuda es pedir más acuerdo de tendencia (H4) y dejar el stop amplio.
 - **Por hora:** operar 24/5 frente a solo Londres/NY no cambia mucho.
 - **Significancia:** la mejor variante no es significativa (p = 0,21 in-sample).
+
+## Stop más amplio (margen extra bajo el mínimo de H1, en ATR de H1; riesgo fijo 20 $/op)
+| margen | variante | in-sample | fuera de muestra | total 5 años | stop mediano | caída máx |
+|---|---|---|---|---|---|---|
+| 0 | H4 a favor, 1:2 | +0,048 R (3/5 años) | +0,178 R | +780 $ | 11,6 $ | 410 $ |
+| 0,5 ATR | H4 a favor, 1:2 | +0,080 R (5/5, p = 0,10) | +0,217 R | +1.022 $ | 15,6 $ | — |
+| 1 ATR | H4 a favor, 1:2 | +0,088 R (5/5, p = 0,07) | +0,208 R | +999 $ | 18,7 $ | — |
+| 2 ATR | H4 a favor, BE + trailing | +0,076 R (4/5) | +0,146 R | +812 $ | 26,4 $ | 182 $ |
+
+- Un margen de 0,5–1 ATR(H1) mejora algo y vuelve todos los años positivos in-sample. Con 2 ATR deja de mejorar.
+- Sigue sin ser concluyente (p = 0,07–0,10).
+- Con 20 $ de riesgo y un stop de unos 16–19 $ en el oro, el lote queda en unos 0,01.
+- Ganar más dólares solo se consigue arriesgando más por operación, lo que sube las caídas en la misma proporción.

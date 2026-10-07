@@ -32,7 +32,9 @@ vol_ok = b["tick_volume"] > b["tick_volume"].rolling(20).mean()
 hr = pd.Series(b.index.hour, index=b.index)  # UTC
 L0 = up & (c > e) & ((b["low"] <= e + 0.1 * a) | (b["low"] <= sl + 0.25 * a)) & (pos >= 0.6)
 S0 = dn & (c < e) & ((b["high"] >= e - 0.1 * a) | (b["high"] >= sh - 0.25 * a)) & (pos <= 0.4)
-dl = (c - (hsl - 0.1 * a)).clip(lower=0.5 * a); ds = ((hsh + 0.1 * a) - c).clip(lower=0.5 * a)
+BUF = float(sys.argv[2]) if len(sys.argv) > 2 else 0.1  # margen extra bajo el mínimo de H1, en ATR(H1)
+aH = align_higher_tf(atr(H), b.index, "1h", "5min")
+dl = (c - (hsl - 0.1 * a - BUF * aH)).clip(lower=0.5 * a); ds = ((hsh + 0.1 * a + BUF * aH) - c).clip(lower=0.5 * a)
 VARS = {"base (24/5)": (L0, S0), "+ tendencia H4 a favor": (L0 & up4, S0 & dn4), "+ volumen > media": (L0 & vol_ok, S0 & vol_ok),
         "+ stop no más de 3 ATR(M5)": (L0 & (dl <= 3 * a), S0 & (ds <= 3 * a)), "solo 7-20 h UTC (Londres+NY)": (L0 & hr.between(7, 19), S0 & hr.between(7, 19))}
 EX = {"1:1": Exits(1, 288), "1:2": Exits(2, 288), "BE 1R + trailing 2ATR": Exits(0, 288, breakeven_r=1.0, trail_atr=2.0, trail_start_r=1.0)}
@@ -42,6 +44,7 @@ for vn, (L, S) in VARS.items():
     stop = dl.where(L, ds.where(S)).to_numpy(float)
     for en, ex in EX.items():
         t = run_backtest(b, L.to_numpy(), S.to_numpy(), stop, ex, cfg.costs)
+        if len(t) < 20: continue
         ti, to = t[t.entry_time <= cut], t[t.entry_time > cut]
         rows.append(dict(variante=vn, salida=en, n_is=len(ti), exp_is=ti.r.mean(), p_is=stats.bootstrap_mean(ti.r.to_numpy(), n_boot=1000)["p_gt_0"],
                          años_is=f"{int((ti.groupby(ti.entry_time.dt.year).r.mean()>0).sum())}/{ti.entry_time.dt.year.nunique()}",
