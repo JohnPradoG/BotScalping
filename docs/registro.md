@@ -764,3 +764,44 @@ XAUUSD (resultado por operación en PUNTOS de precio)
          8.0 4.0     -0.106    -0.371  3141    0.198 -0.452 -0.291     1.191  -1166.258
 
 ```
+
+### 2026-10-07 · XAUUSD y NAS100 · Orden límite justo en el nivel (idea de John: "entrar donde se da vuelta")
+
+`scripts/limite_nivel.py`: compra límite en el soporte de las últimas 2/8 h (y venta en la resistencia), llenada solo si el ask llega al nivel. Stop 0.5/1/2·ATR(M5), gestión 1:1 o 1:2.
+
+**Aviso de método:** la primera versión daba +0.1 a +0.3 R bruto y oro ≈ 0 neto. Era un **sesgo de mirar el futuro**: exigía que la vela del llenado CERRARA por encima del nivel, cosa que no se sabe cuando la orden se llena. Corregido (solo se usa información hasta la vela anterior), el resultado es negativo **incluso sin costes**:
+
+```
+NAS100 — orden límite en el nivel (R por operación)
+ horas_nivel  stop_atrM5  rr  exp_bruto  exp_neto     n  acierto  ci_lo  ci_hi
+           2         0.5 1.0     -0.237    -0.743 14350    0.155 -0.755 -0.730
+           2         0.5 2.0     -0.210    -0.737 14127    0.106 -0.752 -0.721
+           2         1.0 1.0     -0.118    -0.473 13134    0.275 -0.488 -0.458
+           2         1.0 2.0     -0.115    -0.478 12098    0.185 -0.498 -0.457
+           2         2.0 1.0     -0.071    -0.263  9658    0.373 -0.281 -0.244
+           2         2.0 2.0     -0.059    -0.270  7947    0.268 -0.295 -0.243
+           8         0.5 1.0     -0.323    -0.769  3757    0.141 -0.791 -0.746
+           8         0.5 2.0     -0.275    -0.756  3752    0.099 -0.784 -0.729
+           8         1.0 1.0     -0.173    -0.503  3734    0.260 -0.532 -0.473
+           8         1.0 2.0     -0.176    -0.500  3673    0.177 -0.535 -0.462
+           8         2.0 1.0     -0.108    -0.295  3505    0.358 -0.326 -0.263
+           8         2.0 2.0     -0.098    -0.302  3294    0.257 -0.344 -0.262
+
+XAUUSD — orden límite en el nivel (R por operación)
+ horas_nivel  stop_atrM5  rr  exp_bruto  exp_neto     n  acierto  ci_lo  ci_hi
+           2         0.5 1.0     -0.135    -0.459 15878    0.303 -0.476 -0.445
+           2         0.5 2.0     -0.114    -0.458 15401    0.205 -0.479 -0.438
+           2         1.0 1.0     -0.068    -0.249 14462    0.389 -0.266 -0.233
+           2         1.0 2.0     -0.075    -0.253 12715    0.262 -0.277 -0.231
+           2         2.0 1.0     -0.035    -0.137 10357    0.438 -0.156 -0.118
+           2         2.0 2.0     -0.041    -0.147  7982    0.318 -0.173 -0.116
+           8         0.5 1.0     -0.236    -0.512  4212    0.276 -0.539 -0.484
+           8         0.5 2.0     -0.182    -0.495  4199    0.192 -0.531 -0.457
+           8         1.0 1.0     -0.114    -0.272  4182    0.378 -0.301 -0.243
+           8         1.0 2.0     -0.127    -0.311  4077    0.242 -0.351 -0.273
+           8         2.0 1.0     -0.061    -0.170  3928    0.420 -0.201 -0.142
+           8         2.0 2.0     -0.067    -0.170  3628    0.303 -0.211 -0.126
+
+```
+
+**Qué demuestra:** una orden límite en el nivel se llena justo cuando el precio lo atraviesa. Se llena en los rebotes y también en todas las rupturas (selección adversa). "Entrar justo en el giro" solo es posible sabiendo después que fue el giro.
