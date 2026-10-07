@@ -10,7 +10,9 @@ Compra el Nasdaq (o el S&P 500: ponlo en un gráfico de US500m/US500_x100m) tras
 4. Arrastra el EA al gráfico y activa "Algo Trading". **Primero en cuenta demo.**
 
 **Parámetros**
-- `Lotes`: 0,20 por cada 1.000 $ en USTECm. En USTEC_x100m (contrato 100) el lote mínimo de 0,01 ya es demasiado para 1.000 $.
+- `Lotes` con 1.000 $ (decisión de John, 2026-10-07):
+  - S&P 500: **0,01 en US500_x100m** (1 $ por punto).
+  - Nasdaq: **0,15 en USTECm** (0,15 $ por punto). No uses 0,01 en USTEC_x100m: son 1 $ por punto, unas 7 veces más riesgo, con caídas de unos 2.000 $.
 - `StopATR`: stop de emergencia a 3 × ATR(14) diario (por defecto). En el backtest casi no quita ganancia (en el Nasdaq la mejora) y reduce la peor operación a la mitad. Los stops de 1–1,5 ATR estropean la estrategia. Con 0 se usa `StopPuntos` (0 = sin stop).
 - `OffsetServidorUTC`: 0 en Exness (servidor en UTC).
 
