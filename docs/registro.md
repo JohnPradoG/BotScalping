@@ -453,3 +453,117 @@ XAUUSD 1min      0.026    -0.778     0.376
 | XAUUSD | 5min | 10 | 0.0 | BE 1R + trailing 2ATR | 16066 | 0.268 | 0.03 | -0.367 | -0.388 | -0.347 | 0 | 0.847 | 6.0 |
 
 </details>
+
+### 2026-10-07 · XAUUSD y NAS100 · ¿Puede el bot evitar las mechas trampa?
+
+**Hipótesis (John):** las compras en mecha funcionan si se evitan las trampas: mechas que se forman contra un movimiento fuerte o por debajo de la media. Hay que enseñárselo al bot.
+
+**Cómo se probó:** setup `sr_bounce` en M1 (k = 5, mecha ≥ 40 %), salida con break-even a 1R y trailing 2·ATR, 24/5, in-sample. Modo `single` con 11 filtros, nuevos (`ema_side`, `no_momentum_against`, `rsi_zone`, `ao_turn`) y anteriores, **con y sin costes**. Además, un modelo de aprendizaje automático (gradient boosting) con 17 variables a la vez: distancia a EMA20/50/200, AO, RSI, velas recientes, volatilidad, volumen, spread y hora. Se entrenó con 2022–2023 y se probó con 2024–jun 2025.
+
+**Resultado:**
+
+- **Sin costes, ningún filtro separa las mechas buenas de las trampas** (todos ➖ tras Holm). Las diferencias entre lo que conservan y lo que eliminan son de ±0.03 R.
+- **Una entrada al azar con la misma salida gana casi lo mismo sin costes:** +0.12 R en NAS y +0.08 R en oro, frente a +0.135 / +0.086 R con la mecha. La ventaja bruta viene sobre todo de la salida (dejar correr con trailing) y de la tendencia alcista del periodo, no de la mecha.
+- Con costes, los filtros que "aportan" (volatilidad, spread y, en oro, EMA/AO/volumen/tendencia) mejoran porque eligen momentos donde el coste pesa menos, no porque esquiven trampas. Ninguna variante llega a positivo; la mejor es `spread`, con −0.18 R (oro) y −0.22 R (NAS).
+- **Modelo:** AUC 0.55 (NAS) y 0.57 (oro). En oro aprende algo: el 20 % de mechas que cree mejores da +0.06 R bruto frente a −0.03 R del 20 % peor. Pero neto sigue en −0.42 R. En NAS no ordena nada útil.
+
+**Qué demuestra:** distinguir trampas es posible solo en parte, y la diferencia vale ~0.1 R. El coste en M1 es 0.5–0.9 R. Ningún filtro sobre M1 puede cerrar esa brecha.
+
+**Qué NO demuestra:** que el criterio visual de John no capture algo que estas 17 variables no tienen. Para eso hace falta su historial real.
+
+<details><summary>Tablas</summary>
+
+#### NAS100 sin costes
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 22535 | 0.292 | 0.119 | 0.095 | 0.144 | 0.000 | 1.234 | 94.917 |  |  |  |  |
+| baseline | 41636 | 0.241 | 0.135 | 0.113 | 0.155 | 0.000 | 1.256 | 93.213 |  |  |  |  |
+| baseline + ema_side | 10415 | 0.260 | 0.129 | 0.088 | 0.171 | 0.000 | 1.246 | 78.226 | 0.136 | 0.135 | 1.000 | ➖ sin evidencia |
+| baseline + trend_m5 | 16909 | 0.243 | 0.134 | 0.100 | 0.169 | 0.000 | 1.255 | 91.694 | 0.138 | 0.133 | 1.000 | ➖ sin evidencia |
+| baseline + no_momentum_against | 37357 | 0.244 | 0.137 | 0.114 | 0.160 | 0.000 | 1.260 | 87.876 | 0.137 | 0.114 | 1.000 | ➖ sin evidencia |
+| baseline + rsi_zone | 12819 | 0.219 | 0.099 | 0.063 | 0.136 | 0.000 | 1.185 | 86.648 | 0.101 | 0.148 | 1.000 | ➖ sin evidencia |
+| baseline + ao_turn | 11139 | 0.258 | 0.106 | 0.067 | 0.144 | 0.000 | 1.203 | 64.285 | 0.109 | 0.143 | 1.000 | ➖ sin evidencia |
+| baseline + impulse | 3791 | 0.256 | 0.169 | 0.094 | 0.244 | 0.000 | 1.316 | 56.494 | 0.154 | 0.133 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 20578 | 0.241 | 0.151 | 0.119 | 0.184 | 0.000 | 1.287 | 68.092 | 0.147 | 0.126 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 10040 | 0.265 | 0.128 | 0.085 | 0.172 | 0.000 | 1.236 | 65.005 | 0.126 | 0.137 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 21667 | 0.235 | 0.101 | 0.072 | 0.130 | 0.000 | 1.191 | 67.529 | 0.099 | 0.173 | 1.000 | ❌ empeora |
+| baseline + spread | 41636 | 0.241 | 0.135 | 0.113 | 0.155 | 0.000 | 1.256 | 93.213 | 0.135 |  |  | datos insuficientes |
+| baseline + structure_break | 211 | 0.336 | 0.058 | -0.172 | 0.311 | 0.305 | 1.110 | 18.943 | 0.031 | 0.135 | 1.000 | ➖ sin evidencia |
+
+#### NAS100 con costes
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 24204 | 0.074 | -0.800 | -0.814 | -0.787 | 1.000 | 0.157 | 19368.415 |  |  |  |  |
+| baseline | 47276 | 0.053 | -0.898 | -0.906 | -0.888 | 1.000 | 0.115 | 42439.987 |  |  |  |  |
+| baseline + ema_side | 10972 | 0.068 | -0.852 | -0.871 | -0.833 | 1.000 | 0.134 | 9351.407 | -0.876 | -0.904 | 0.064 | ➖ sin evidencia |
+| baseline + trend_m5 | 17826 | 0.058 | -0.874 | -0.889 | -0.857 | 1.000 | 0.129 | 15580.516 | -0.893 | -0.900 | 1.000 | ➖ sin evidencia |
+| baseline + no_momentum_against | 42182 | 0.054 | -0.896 | -0.906 | -0.886 | 1.000 | 0.114 | 37802.629 | -0.897 | -0.906 | 1.000 | ➖ sin evidencia |
+| baseline + rsi_zone | 13367 | 0.048 | -0.899 | -0.916 | -0.882 | 1.000 | 0.116 | 12020.723 | -0.907 | -0.894 | 1.000 | ➖ sin evidencia |
+| baseline + ao_turn | 11527 | 0.066 | -0.865 | -0.883 | -0.847 | 1.000 | 0.123 | 9975.336 | -0.876 | -0.904 | 0.034 | ✅ aporta valor |
+| baseline + impulse | 3921 | 0.062 | -0.877 | -0.909 | -0.841 | 1.000 | 0.133 | 3438.331 | -0.886 | -0.899 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 21701 | 0.054 | -0.901 | -0.914 | -0.888 | 1.000 | 0.114 | 19552.805 | -0.917 | -0.882 | 1.000 | ❌ empeora |
+| baseline + volume | 10413 | 0.066 | -0.882 | -0.901 | -0.861 | 1.000 | 0.129 | 9179.404 | -0.890 | -0.900 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 24218 | 0.062 | -0.836 | -0.850 | -0.823 | 1.000 | 0.138 | 20257.773 | -0.837 | -0.961 | 0.002 | ✅ aporta valor |
+| baseline + spread | 1903 | 0.174 | -0.220 | -0.308 | -0.126 | 1.000 | 0.669 | 436.063 | -0.225 | -0.926 | 0.002 | ✅ aporta valor |
+| baseline + structure_break | 213 | 0.131 | -0.748 | -0.853 | -0.638 | 1.000 | 0.159 | 159.312 | -0.771 | -0.898 | 0.363 | ➖ sin evidencia |
+
+#### Oro sin costes
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 23365 | 0.283 | 0.083 | 0.060 | 0.106 | 0.000 | 1.165 | 94.251 |  |  |  |  |
+| baseline | 46696 | 0.237 | 0.086 | 0.067 | 0.106 | 0.000 | 1.163 | 240.278 |  |  |  |  |
+| baseline + ema_side | 10986 | 0.266 | 0.090 | 0.053 | 0.128 | 0.000 | 1.174 | 62.299 | 0.107 | 0.081 | 1.000 | ➖ sin evidencia |
+| baseline + trend_m5 | 18059 | 0.248 | 0.102 | 0.072 | 0.133 | 0.000 | 1.195 | 122.206 | 0.106 | 0.076 | 0.720 | ➖ sin evidencia |
+| baseline + no_momentum_against | 42413 | 0.239 | 0.091 | 0.070 | 0.111 | 0.000 | 1.172 | 232.270 | 0.089 | 0.064 | 1.000 | ➖ sin evidencia |
+| baseline + rsi_zone | 14443 | 0.208 | 0.076 | 0.042 | 0.112 | 0.000 | 1.143 | 247.157 | 0.077 | 0.090 | 1.000 | ➖ sin evidencia |
+| baseline + ao_turn | 12869 | 0.258 | 0.102 | 0.067 | 0.137 | 0.000 | 1.197 | 108.795 | 0.101 | 0.081 | 1.000 | ➖ sin evidencia |
+| baseline + impulse | 4263 | 0.247 | 0.075 | 0.012 | 0.139 | 0.008 | 1.141 | 67.266 | 0.083 | 0.086 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 22280 | 0.241 | 0.077 | 0.050 | 0.104 | 0.000 | 1.145 | 192.568 | 0.084 | 0.088 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 13608 | 0.265 | 0.091 | 0.057 | 0.127 | 0.000 | 1.171 | 98.813 | 0.101 | 0.081 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 30431 | 0.234 | 0.070 | 0.047 | 0.093 | 0.000 | 1.133 | 203.628 | 0.071 | 0.114 | 1.000 | ➖ sin evidencia |
+| baseline + spread | 46696 | 0.237 | 0.086 | 0.067 | 0.106 | 0.000 | 1.163 | 240.278 | 0.086 |  |  | datos insuficientes |
+| baseline + structure_break | 200 | 0.290 | -0.005 | -0.193 | 0.195 | 0.502 | 0.990 | 15.254 | 0.015 | 0.086 | 1.000 | ➖ sin evidencia |
+
+#### Oro con costes
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 24416 | 0.133 | -0.592 | -0.609 | -0.575 | 1.000 | 0.310 | 14457.991 |  |  |  |  |
+| baseline | 51695 | 0.097 | -0.744 | -0.755 | -0.732 | 1.000 | 0.226 | 38457.563 |  |  |  |  |
+| baseline + ema_side | 11472 | 0.129 | -0.641 | -0.667 | -0.615 | 1.000 | 0.292 | 7365.782 | -0.652 | -0.767 | 0.002 | ✅ aporta valor |
+| baseline + trend_m5 | 18986 | 0.109 | -0.692 | -0.712 | -0.672 | 1.000 | 0.261 | 13138.381 | -0.707 | -0.762 | 0.002 | ✅ aporta valor |
+| baseline + no_momentum_against | 46788 | 0.099 | -0.734 | -0.746 | -0.722 | 1.000 | 0.232 | 34367.412 | -0.735 | -0.822 | 0.002 | ✅ aporta valor |
+| baseline + rsi_zone | 14995 | 0.076 | -0.800 | -0.819 | -0.780 | 1.000 | 0.189 | 12004.804 | -0.805 | -0.720 | 1.000 | ❌ empeora |
+| baseline + ao_turn | 13286 | 0.113 | -0.697 | -0.719 | -0.675 | 1.000 | 0.248 | 9268.777 | -0.707 | -0.755 | 0.002 | ✅ aporta valor |
+| baseline + impulse | 4415 | 0.091 | -0.775 | -0.813 | -0.736 | 1.000 | 0.206 | 3435.935 | -0.779 | -0.740 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 23430 | 0.103 | -0.729 | -0.745 | -0.712 | 1.000 | 0.237 | 17088.204 | -0.738 | -0.748 | 0.692 | ➖ sin evidencia |
+| baseline + volume | 14050 | 0.123 | -0.680 | -0.702 | -0.657 | 1.000 | 0.266 | 9559.895 | -0.685 | -0.764 | 0.002 | ✅ aporta valor |
+| baseline + volatility | 33095 | 0.113 | -0.637 | -0.652 | -0.621 | 1.000 | 0.285 | 21080.781 | -0.638 | -0.929 | 0.002 | ✅ aporta valor |
+| baseline + spread | 5148 | 0.189 | -0.180 | -0.230 | -0.130 | 1.000 | 0.721 | 935.111 | -0.179 | -0.806 | 0.002 | ✅ aporta valor |
+| baseline + structure_break | 201 | 0.184 | -0.633 | -0.783 | -0.464 | 1.000 | 0.294 | 128.621 | -0.657 | -0.744 | 0.692 | ➖ sin evidencia |
+
+#### Modelo
+```
+NAS100: entrenamiento 21630 operaciones, prueba 18280
+AUC prueba = 0.550  (0.5 = no distingue)
+Operaciones de prueba por quintil de probabilidad predicha (4 = las que el modelo cree mejores):
+            n  exp_bruto  exp_neto
+quintil                           
+0        3658      0.130    -0.646
+1        3654      0.193    -0.833
+2        3656      0.112    -0.848
+3        3656      0.083    -0.825
+4        3656      0.112    -0.778
+
+XAUUSD: entrenamiento 24081 operaciones, prueba 20627
+AUC prueba = 0.573  (0.5 = no distingue)
+Operaciones de prueba por quintil de probabilidad predicha (4 = las que el modelo cree mejores):
+            n  exp_bruto  exp_neto
+quintil                           
+0        4126     -0.028    -0.660
+1        4136      0.008    -0.613
+2        4114      0.031    -0.602
+3        4125      0.053    -0.519
+4        4126      0.063    -0.415
+
+```
+</details>

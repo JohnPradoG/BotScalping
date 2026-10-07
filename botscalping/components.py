@@ -290,6 +290,44 @@ def f_session_hours(ctx: Context, start: int, end: int) -> LongShort:
     return ok, ok
 
 
+@register("ema_side", "filter", "Largos solo con el cierre por encima de la EMA; cortos solo por debajo (la media de John).", ema=50)
+def f_ema_side(ctx: Context, ema: int) -> LongShort:
+    d = ctx.bars["close"] - ctx.ema(ema)
+    return _arr(d > 0), _arr(d < 0)
+
+
+@register("no_momentum_against", "filter",
+          "Evita la trampa: no comprar si en las últimas N velas hubo k velas bajistas fuertes (cuerpo > body_atr·ATR); simétrico en ventas.",
+          n=5, k=2, body_atr=0.8)
+def f_no_momentum_against(ctx: Context, n: int, k: int, body_atr: float) -> LongShort:
+    b = ctx.bars
+    body = (b["close"] - b["open"]) / ctx.atr()
+    strong_dn = (body < -body_atr).astype(int).rolling(n).sum()
+    strong_up = (body > body_atr).astype(int).rolling(n).sum()
+    return _arr(strong_dn < k), _arr(strong_up < k)
+
+
+def _rsi(close: pd.Series, n: int) -> pd.Series:
+    d = close.diff()
+    up = d.clip(lower=0).ewm(alpha=1 / n, adjust=False).mean()
+    dn = (-d.clip(upper=0)).ewm(alpha=1 / n, adjust=False).mean()
+    return 100 - 100 / (1 + up / dn.replace(0, np.nan))
+
+
+@register("rsi_zone", "filter", "RSI(14) en zona de giro: largos con RSI <= lo, cortos con RSI >= hi.", n=14, lo=40, hi=60)
+def f_rsi_zone(ctx: Context, n: int, lo: float, hi: float) -> LongShort:
+    r = _rsi(ctx.bars["close"], n)
+    return _arr(r <= lo), _arr(r >= hi)
+
+
+@register("ao_turn", "filter", "Awesome Oscillator girando a favor: largos si AO sube respecto a la vela anterior; cortos si baja.")
+def f_ao_turn(ctx: Context) -> LongShort:
+    b = ctx.bars
+    mid = (b["high"] + b["low"]) / 2
+    ao = mid.rolling(5).mean() - mid.rolling(34).mean()
+    return _arr(ao > ao.shift()), _arr(ao < ao.shift())
+
+
 # Pendientes (definir con John antes de implementar): "retest" (vuelta al nivel roto
 # dentro de N barras con tolerancia en ATR) y "score" (suma ponderada de filtros >= umbral).
 
