@@ -406,3 +406,50 @@ NAS100
 
 ```
 </details>
+
+### 2026-10-07 · XAUUSD y NAS100 · Método manual de John: rebote en soporte/resistencia (`sr_bounce`)
+
+**Hipótesis (John):** marcar soportes y resistencias pequeños; comprar al tocar el soporte y vender en la resistencia (con mecha); stop detrás del nivel; dejarla correr y cerrar si se gira. 24 h, 5 días.
+
+**Cómo se formalizó:** nivel = último swing confirmado (fractal de k = 3/5/10 velas) en M1 o M5. Entrada en la primera vela que toca el nivel (a < 0.25·ATR) y cierra de vuelta, con o sin mecha (≥ 40 % del rango). Stop detrás del nivel + 0.25·ATR (mínimo 0.5·ATR). Cinco salidas: 1:1, 1:2, trailing 1·ATR, break-even a 1R + trailing 2·ATR, cierre al cruzar la EMA20. Todo el día, in-sample.
+
+**Resultado:** **0 de 120 variantes positivas netas.** Medianas por grupo:
+
+```
+             exp_bruto  exp_neto  stop_med
+sym    tf                                 
+NAS100 1min      0.060    -0.908     3.440
+       5min      0.014    -0.582     8.516
+XAUUSD 1min      0.026    -0.778     0.376
+       5min      0.002    -0.367     0.898
+```
+
+- Sin costes, 85 de 120 son positivas: hay algo de ventaja bruta, sobre todo en NAS100 M1 con trailing (+0.13 a +0.15 R).
+- Pero el stop típico es de ~3 pts en NAS100 y ~0.9 $ en oro, y el coste de una operación es ~5 pts / ~0.3 $. El coste se come entre 0.35 R (oro M5) y 0.95 R (NAS M1) por operación.
+- Las salidas dinámicas (trailing, break-even) mejoran el bruto respecto a 1:1/1:2, pero no cambian el signo.
+
+**Qué demuestra:** tal como está formalizado, el método pierde de forma consistente con el spread de Exness: stops tan pequeños no aguantan el coste.
+
+**Qué NO demuestra:** que la lectura discrecional de John (qué niveles elige, cuándo cierra) no aporte algo que estas reglas no capturan. Tampoco se probó con niveles de marcos mayores (H1/H4) y stops más amplios.
+
+<details><summary>Mejores 15 por expectativa neta</summary>
+
+| sym | tf | k | mecha | salida | n | win | exp_bruto | exp_neto | ci_lo | ci_hi | años_pos | stop_med | dur_med |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| XAUUSD | 5min | 5 | 0.4 | BE 1R + trailing 2ATR | 11664 | 0.296 | 0.024 | -0.347 | -0.369 | -0.325 | 0 | 0.942 | 7.0 |
+| XAUUSD | 5min | 5 | 0.4 | trailing 1ATR | 12824 | 0.213 | 0.025 | -0.349 | -0.361 | -0.337 | 0 | 0.949 | 2.0 |
+| XAUUSD | 5min | 5 | 0.4 | 1:1 | 11885 | 0.348 | -0.011 | -0.349 | -0.367 | -0.33 | 0 | 0.942 | 5.0 |
+| XAUUSD | 5min | 3 | 0.4 | trailing 1ATR | 17564 | 0.209 | 0.017 | -0.353 | -0.363 | -0.343 | 0 | 0.961 | 2.0 |
+| XAUUSD | 5min | 3 | 0.4 | 1:1 | 15668 | 0.346 | -0.023 | -0.354 | -0.369 | -0.339 | 0 | 0.959 | 5.0 |
+| XAUUSD | 5min | 5 | 0.4 | 1:2 | 10930 | 0.233 | -0.015 | -0.356 | -0.38 | -0.331 | 0 | 0.938 | 7.0 |
+| XAUUSD | 5min | 10 | 0.4 | BE 1R + trailing 2ATR | 8018 | 0.282 | 0.01 | -0.358 | -0.386 | -0.329 | 0 | 0.931 | 7.0 |
+| XAUUSD | 5min | 5 | 0.4 | cierre al cruzar EMA20 | 12532 | 0.16 | -0.002 | -0.359 | -0.376 | -0.344 | 0 | 0.949 | 1.0 |
+| XAUUSD | 5min | 10 | 0.4 | trailing 1ATR | 8544 | 0.211 | 0.01 | -0.36 | -0.375 | -0.344 | 0 | 0.944 | 2.0 |
+| XAUUSD | 5min | 3 | 0.4 | BE 1R + trailing 2ATR | 15278 | 0.297 | 0.012 | -0.36 | -0.379 | -0.341 | 0 | 0.961 | 8.0 |
+| XAUUSD | 5min | 3 | 0.4 | 1:2 | 13929 | 0.232 | -0.019 | -0.36 | -0.381 | -0.339 | 0 | 0.96 | 8.0 |
+| XAUUSD | 5min | 10 | 0.4 | 1:1 | 8114 | 0.341 | -0.026 | -0.363 | -0.383 | -0.34 | 0 | 0.931 | 5.0 |
+| XAUUSD | 5min | 5 | 0.0 | BE 1R + trailing 2ATR | 22798 | 0.275 | 0.049 | -0.366 | -0.383 | -0.347 | 0 | 0.857 | 6.0 |
+| XAUUSD | 5min | 3 | 0.4 | cierre al cruzar EMA20 | 17066 | 0.149 | -0.011 | -0.367 | -0.381 | -0.353 | 0 | 0.966 | 1.0 |
+| XAUUSD | 5min | 10 | 0.0 | BE 1R + trailing 2ATR | 16066 | 0.268 | 0.03 | -0.367 | -0.388 | -0.347 | 0 | 0.847 | 6.0 |
+
+</details>

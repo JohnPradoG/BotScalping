@@ -20,6 +20,7 @@ Uso:
 from __future__ import annotations
 
 import argparse
+import dataclasses
 import tomllib
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,7 +66,7 @@ def load_config(path: str) -> Config:
     return Config(
         name=raw.get("name", Path(path).stem), spec=spec, data_path=d.get("path"), broker_tz=d.get("broker_tz", "UTC"),
         in_sample_until=s.get("in_sample_until"), setup=st["setup"], setup_params=st.get("setup_params", {}),
-        exits=Exits(st.get("rr", 2.0), st.get("max_bars", 30)), costs=costs, filters=filters, base_filters=base,
+        exits=Exits(**{f.name: st[f.name] for f in dataclasses.fields(Exits) if f.name in st}), costs=costs, filters=filters, base_filters=base,
         min_trades=raw.get("analysis", {}).get("min_trades", 100),
         benchmark_random=raw.get("analysis", {}).get("benchmark_random", True),
     )

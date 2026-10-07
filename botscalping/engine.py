@@ -8,6 +8,9 @@ Supuestos (deliberadamente conservadores):
 * Si en una misma barra se tocan stop y take profit, se asume que salta el STOP.
 * Si la barra abre más allá del stop (gap), se sale a la apertura, no al stop.
 * Una sola posición a la vez. Se cierra por stop, objetivo o tiempo máximo (``max_bars``).
+* Salidas dinámicas opcionales ("dejarla correr y cerrar si se gira"): break-even, stop
+  dinámico (trailing) a k·ATR del mejor precio y cierre si una vela cierra al otro lado de la
+  EMA. Se actualizan con la barra ya CERRADA y se aplican desde la barra siguiente.
 * El resultado se mide en R = beneficio / riesgo inicial (distancia de stop).
 """
 from __future__ import annotations
@@ -18,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 from . import components as comps
+from . import indicators as ind
 from .data import InstrumentSpec
 
 
@@ -29,8 +33,12 @@ class Costs:
 
 @dataclass(frozen=True)
 class Exits:
-    rr: float = 2.0
+    rr: float = 2.0  # <= 0: sin objetivo fijo
     max_bars: int = 30
+    breakeven_r: float = 0.0  # > 0: al ir +x R a favor, el stop pasa a la entrada
+    trail_atr: float = 0.0  # > 0: stop dinámico a k·ATR del mejor precio alcanzado
+    trail_start_r: float = 0.0  # el trailing se activa al ir +x R a favor
+    exit_ema: int = 0  # > 0: cierra si una vela cierra al otro lado de esta EMA (se "devuelve")
 
 
 @dataclass
@@ -70,6 +78,9 @@ def run_backtest(bars: pd.DataFrame, long_: np.ndarray, short_: np.ndarray, stop
     spr = bars["spread"].to_numpy(float)
     idx = bars.index
     n = len(bars)
+    atr = ind.atr(bars).to_numpy() if exits.trail_atr > 0 else None
+    ema = ind.ema(bars["close"], exits.exit_ema).to_numpy() if exits.exit_ema > 0 else None
+    no_tp = exits.rr <= 0
     valid = np.isfinite(stop_dist) & (stop_dist > 0)
     sig = np.flatnonzero((long_ | short_) & valid)
     trades = []
@@ -82,10 +93,11 @@ def run_backtest(bars: pd.DataFrame, long_: np.ndarray, short_: np.ndarray, stop
         e = i + 1
         if side == 1:
             entry = o[e] + spr[e] + costs.slippage
-            sl, tp = entry - d, entry + exits.rr * d
+            sl, tp = entry - d, (np.inf if no_tp else entry + exits.rr * d)
         else:
             entry = o[e] - costs.slippage
-            sl, tp = entry + d, entry - exits.rr * d
+            sl, tp = entry + d, (-np.inf if no_tp else entry - exits.rr * d)
+        best = entry
         exit_px, reason, j = np.nan, "time", e
         last = min(n - 1, e + exits.max_bars - 1)
         for j in range(e, last + 1):
@@ -96,6 +108,13 @@ def run_backtest(bars: pd.DataFrame, long_: np.ndarray, short_: np.ndarray, stop
                     exit_px, reason = sl - costs.slippage, "stop"; break
                 if h[j] >= tp:
                     exit_px, reason = tp, "target"; break
+                best = max(best, h[j])
+                if ema is not None and c[j] < ema[j]:
+                    exit_px, reason = c[j] - costs.slippage, "reversal"; break
+                if exits.breakeven_r > 0 and best - entry >= exits.breakeven_r * d:
+                    sl = max(sl, entry)
+                if atr is not None and best - entry >= exits.trail_start_r * d:
+                    sl = max(sl, best - exits.trail_atr * atr[j])
             else:
                 ask_o, ask_h, ask_l = o[j] + spr[j], h[j] + spr[j], l[j] + spr[j]
                 if ask_o >= sl and j > e:
@@ -104,6 +123,13 @@ def run_backtest(bars: pd.DataFrame, long_: np.ndarray, short_: np.ndarray, stop
                     exit_px, reason = sl + costs.slippage, "stop"; break
                 if ask_l <= tp:
                     exit_px, reason = tp, "target"; break
+                best = min(best, ask_l)
+                if ema is not None and c[j] > ema[j]:
+                    exit_px, reason = c[j] + spr[j] + costs.slippage, "reversal"; break
+                if exits.breakeven_r > 0 and entry - best >= exits.breakeven_r * d:
+                    sl = min(sl, entry)
+                if atr is not None and entry - best >= exits.trail_start_r * d:
+                    sl = min(sl, best + exits.trail_atr * atr[j])
         else:
             j = last
             exit_px = (c[j] - costs.slippage) if side == 1 else (c[j] + spr[j] + costs.slippage)

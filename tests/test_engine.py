@@ -63,3 +63,32 @@ def test_commission_reduces_r():
     lo, sh = one_signal(2)
     t = run_backtest(bars, lo, sh, np.full(2, 1.0), Exits(rr=2), Costs(commission=0.1))
     assert t.iloc[0]["r"] == pytest.approx(1.9)
+
+
+def test_trailing_stop_locks_profit():
+    # sube a 105 y luego cae: con trailing a 1·ATR debe salir con beneficio, no en el stop inicial
+    rows = [(100, 100, 100, 100)] * 20 + [(100, 101, 99.5, 101), (101, 103, 100.8, 103), (103, 105, 102.8, 105),
+                                          (105, 105, 101, 101), (101, 101, 95, 95)]
+    bars = make_bars(rows)
+    n = len(rows)
+    lo = np.zeros(n, bool); lo[19] = True
+    t = run_backtest(bars, lo, np.zeros(n, bool), np.full(n, 2.0), Exits(rr=0, max_bars=10, trail_atr=1.0))
+    assert t.iloc[0]["reason"] == "stop" and t.iloc[0]["r"] > 0
+
+
+def test_ema_reversal_exit():
+    rows = [(100, 100, 100, 100)] * 30 + [(100, 100.5, 99.9, 100.4), (100.4, 100.4, 98.9, 99.0), (99, 99, 99, 99)]
+    bars = make_bars(rows)
+    n = len(rows)
+    lo = np.zeros(n, bool); lo[29] = True
+    t = run_backtest(bars, lo, np.zeros(n, bool), np.full(n, 5.0), Exits(rr=0, max_bars=10, exit_ema=5))
+    assert t.iloc[0]["reason"] == "reversal"
+    assert t.iloc[0]["exit"] == pytest.approx(99.0)
+
+
+def test_breakeven_moves_stop_to_entry():
+    rows = [(100, 100, 100, 100), (100, 101.2, 99.9, 101), (101, 101, 99.5, 99.6)]
+    bars = make_bars(rows)
+    lo, sh = one_signal(3)
+    t = run_backtest(bars, lo, sh, np.full(3, 1.0), Exits(rr=3, max_bars=10, breakeven_r=1.0))
+    assert t.iloc[0]["r"] == pytest.approx(0.0)

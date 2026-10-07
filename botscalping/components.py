@@ -164,6 +164,32 @@ def setup_orb(ctx: Context, minutes: int, sl_atr: float, atr_tf: str):
     return _arr(first_up), _arr(first_dn), stop
 
 
+@register("sr_bounce", "setup",
+          "Método de John: soporte/resistencia = último swing confirmado (fractal de k velas). Compra cuando una vela "
+          "toca el soporte (a menos de tol·ATR) y cierra por encima con mecha inferior >= wick del rango; vende igual "
+          "en la resistencia. Stop detrás del nivel (+buffer), con mínimo min_stop_atr·ATR.",
+          k=5, tf="1min", tol_atr=0.25, wick=0.0, buffer_atr=0.25, min_stop_atr=0.5)
+def setup_sr_bounce(ctx: Context, k: int, tf: str, tol_atr: float, wick: float, buffer_atr: float, min_stop_atr: float):
+    b = ctx.bars if pd.Timedelta(tf) == pd.Timedelta("1min") else ind.resample_ohlc(ctx.bars, tf)
+    a = ind.atr(b)
+    sw = ind.swing_levels(b, k)
+    sup, res = sw["swing_low"], sw["swing_high"]
+    rng = (b["high"] - b["low"]).replace(0, np.nan)
+    lower_w = (b[["open", "close"]].min(axis=1) - b["low"]) / rng
+    upper_w = (b["high"] - b[["open", "close"]].max(axis=1)) / rng
+    long_c = (b["low"] <= sup + tol_atr * a) & (b["close"] > sup) & (lower_w >= wick) & (b["close"] < res)
+    short_c = (b["high"] >= res - tol_atr * a) & (b["close"] < res) & (upper_w >= wick) & (b["close"] > sup)
+    # una sola entrada por nivel: solo la primera vela que lo toca
+    long_c &= ~long_c.shift(fill_value=False) | (sup != sup.shift())
+    short_c &= ~short_c.shift(fill_value=False) | (res != res.shift())
+    d_long = np.maximum(b["close"] - (sup - buffer_atr * a), min_stop_atr * a)
+    d_short = np.maximum((res + buffer_atr * a) - b["close"], min_stop_atr * a)
+    dist = d_long.where(long_c, d_short.where(short_c))
+    if pd.Timedelta(tf) != pd.Timedelta("1min"):
+        dist = ind.align_higher_tf(dist, ctx.bars.index, tf)
+    return _emit(ctx, long_c.fillna(False), tf), _emit(ctx, short_c.fillna(False), tf), dist.to_numpy(float)
+
+
 # -------------------------------------------------------------------------- filtros
 @register("trend_m5", "filter", "Tendencia M5: cierre M5 por encima/debajo de su EMA (sin lookahead).", ema=20)
 def f_trend_m5(ctx: Context, ema: int) -> LongShort:
