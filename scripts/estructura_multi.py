@@ -40,13 +40,19 @@ def one(i, side, d, rr=2, hold=288):  # una operación independiente desde la se
     return j, side * (x - en) / d
 sig = [(i, 1, DL[i]) for i in np.where(Ln)[0]] + [(i, -1, DS[i]) for i in np.where(Sn)[0]]
 sig = sorted((i, s, d) for i, s, d in sig if np.isfinite(d) and d > 0 and i < n - 2)
-for N in [1, 2, 3, 5]:
-    open_until, res = [], []
+for N in [int(x) for x in (sys.argv[2].split(",") if len(sys.argv) > 2 else ["1", "2", "3", "5"])]:
+    open_until, res, maxc = [], [], 0
     for i, s, d in sig:
         open_until = [x for x in open_until if x > i]
         if len(open_until) >= N: continue
-        j, r = one(i, s, d); open_until.append(j); res.append((b.index[i], r))
+        j, r = one(i, s, d); open_until.append(j); res.append((b.index[i], r)); maxc = max(maxc, len(open_until))
     t = pd.Series(dict(res)); usd = 20 * t; eq = 1000 + usd.cumsum()
+    if N >= 100:  # sin límite: tamaño del riesgo para que la peor racha no pase del 35 % de 1.000 $
+        Rcum = t.cumsum(); ddR = (Rcum.cummax() - Rcum).max(); risk = 350 / ddR
+        stops = pd.Series({b.index[i]: d for i, s_, d in sig}).reindex(t.index)
+        lots = risk / (stops * 100)
+        print(f"   sin límite: peor racha {ddR:.1f} R -> riesgo por operación {risk:.1f} $ | lote mediano {lots.median():.3f} "
+              f"(mín 0,01 en Exness: {100*(lots < 0.01).mean():.0f} % de las operaciones necesitarían menos) | ganancia {risk*t.sum():,.0f} $")
     ti, to = t[t.index <= cut], t[t.index > cut]
-    print(f"{cfg.spec.symbol} máx {N} a la vez | ops {len(t)} ({len(t)/ (b.index.normalize().nunique()):.2f}/día) | in-sample {ti.mean():+.3f}R | OOS {to.mean():+.3f}R | "
+    print(f"{cfg.spec.symbol} máx {N} a la vez (máx real {maxc}) | ops {len(t)} ({len(t)/ (b.index.normalize().nunique()):.2f}/día) | in-sample {ti.mean():+.3f}R | OOS {to.mean():+.3f}R | "
           f"total {usd.sum():,.0f} $ | mínimo cuenta {eq.min():,.0f} $ | caída máx {(eq.cummax()-eq).max():,.0f} $ | por año {usd.groupby(usd.index.year).sum().round(0).to_dict()}")
