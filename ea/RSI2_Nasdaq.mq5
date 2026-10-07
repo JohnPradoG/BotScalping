@@ -7,7 +7,7 @@
 //|  - "Cierre del día" = precio a las 15:55 de Nueva York.           |
 //|  - Compra si RSI(2) < Umbral y cierre > media de 200 días.        |
 //|  - Vende si cierre > media de 5 días o tras MaxDias días.         |
-//|  - Stop de emergencia opcional en puntos (0 = sin stop).          |
+//|  - Stop de emergencia: 3 x ATR(14) diario (configurable).         |
 //| Pensado para USTECm (contrato 1): 0,20 lotes por cada 1.000 $.     |
 //| Probar SIEMPRE primero en cuenta demo.                            |
 //+------------------------------------------------------------------+
@@ -22,13 +22,15 @@ input double Umbral       = 20.0;   // RSI(2) por debajo de este valor = caída
 input int    MediaLarga   = 200;    // filtro de tendencia (días)
 input int    MediaCorta   = 5;      // salida al cerrar sobre esta media (días)
 input int    MaxDias      = 10;     // salida forzada tras N días
-input double StopPuntos   = 0;      // stop de emergencia en puntos del índice (0 = sin stop)
+input double StopATR      = 3.0;    // stop de emergencia = StopATR x ATR(14) diario (0 = sin stop; 3 fue lo mejor en el backtest)
+input double StopPuntos   = 0;      // alternativa: stop fijo en puntos del índice (se usa si StopATR = 0)
 input int    HoraNY       = 15;     // hora de Nueva York a la que se evalúa
 input int    MinutoNY     = 55;
 input int    OffsetServidorUTC = 0; // horas que el servidor va por delante de UTC (Exness = 0)
 input long   Magic        = 202610;
 
 CTrade trade;
+int    hATR = INVALID_HANDLE;
 int    ultimoDiaEvaluado = -1;
 
 //--- ¿horario de verano en EE. UU.? (2º domingo de marzo 2:00 -> 1er domingo de noviembre 2:00, hora local)
@@ -125,11 +127,12 @@ int DiasHabiles(datetime desde, datetime hasta)
 int OnInit()
 {
    trade.SetExpertMagicNumber(Magic);
+   hATR = iATR(_Symbol, PERIOD_D1, 14);
    EventSetTimer(30);
    Print("RSI2_Nasdaq listo en ", _Symbol, ". Evalúa a las ", HoraNY, ":", MinutoNY, " de Nueva York.");
    return INIT_SUCCEEDED;
 }
-void OnDeinit(const int reason) { EventKillTimer(); }
+void OnDeinit(const int reason) { EventKillTimer(); if(hATR != INVALID_HANDLE) IndicatorRelease(hATR); }
 
 void OnTimer()
 {
@@ -160,7 +163,14 @@ void OnTimer()
    if(rsi < Umbral && cierre > ma200)
    {
       double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-      double sl = StopPuntos > 0 ? NormalizeDouble(ask - StopPuntos, _Digits) : 0;
+      double dist = StopPuntos;
+      if(StopATR > 0)
+      {
+         double buf[1];
+         if(hATR == INVALID_HANDLE || CopyBuffer(hATR, 0, 1, 1, buf) != 1) { Print("ATR diario no disponible; no se opera hoy."); return; }
+         dist = StopATR * buf[0];
+      }
+      double sl = dist > 0 ? NormalizeDouble(ask - dist, _Digits) : 0;
       if(trade.Buy(Lotes, _Symbol, ask, sl, 0, "RSI2")) PrintFormat("Compra %.2f lotes a %.2f (RSI2 %.1f)", Lotes, ask, rsi);
       else Print("Error al comprar: ", trade.ResultRetcodeDescription());
    }
