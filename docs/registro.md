@@ -106,3 +106,170 @@ Decisión / siguiente hipótesis:
 | baseline + session_hours | 17013 | 0.200 | -0.429 | -0.447 | -0.411 | 1.000 | 0.480 | 7301.611 | -0.429 | -0.931 | 0.003 | ✅ aporta valor |
 
 </details>
+
+### 2026-10-07 · XAUUSD y NAS100 · Estrategia 2: más riesgo por operación · modo single
+
+**Hipótesis:** si el stop es lo bastante grande para que el coste pese < 0.15 R, la ruptura y algunos filtros muestran ventaja. Condición fija: solo entradas en las 2 h tras la apertura de NY (`session_hours` como filtro de base).
+
+**Paso 1, escala del stop** (in-sample, ruptura de 5 barras, 1:2; `coste_R` = coste ida y vuelta / riesgo, mediana):
+
+<details><summary>Rejilla NAS100</summary>
+
+```
+   tf  sl_atr    setup  tipo     n    exp  ci_lo  ci_hi  coste_R  largos_exp  cortos_exp
+ 1min       1 breakout bruto 15240  0.019 -0.003  0.041      NaN         NaN         NaN
+ 1min       1 breakout  neto 17013 -0.429 -0.447 -0.411    0.416      -0.419      -0.438
+ 1min       1   random bruto  2057  0.038 -0.028  0.097      NaN         NaN         NaN
+ 1min       1   random  neto  2097 -0.358 -0.412 -0.303    0.395      -0.359      -0.358
+ 1min       3 breakout bruto  4487  0.026 -0.010  0.062      NaN         NaN         NaN
+ 1min       3 breakout  neto  4877 -0.152 -0.189 -0.117    0.144      -0.153      -0.151
+ 1min       3   random bruto  1477 -0.036 -0.101  0.025      NaN         NaN         NaN
+ 1min       3   random  neto  1520 -0.176 -0.232 -0.117    0.132      -0.196      -0.157
+ 5min       1 breakout bruto  3973  0.008 -0.034  0.053      NaN         NaN         NaN
+ 5min       1 breakout  neto  4051 -0.224 -0.262 -0.184    0.215      -0.231      -0.217
+ 5min       1   random bruto  1761 -0.020 -0.084  0.041      NaN         NaN         NaN
+ 5min       1   random  neto  1793 -0.201 -0.263 -0.143    0.213      -0.232      -0.172
+ 5min       2 breakout bruto  2521  0.026 -0.024  0.074      NaN         NaN         NaN
+ 5min       2 breakout  neto  2583 -0.106 -0.153 -0.057    0.112      -0.096      -0.115
+ 5min       2   random bruto  1361 -0.061 -0.129  0.010      NaN         NaN         NaN
+ 5min       2   random  neto  1398 -0.160 -0.227 -0.097    0.108      -0.180      -0.140
+15min       1 breakout bruto  1742  0.081  0.017  0.149      NaN         NaN         NaN
+15min       1 breakout  neto  1750 -0.090 -0.153 -0.026    0.168      -0.078      -0.102
+15min       1   random bruto  1655 -0.049 -0.110  0.011      NaN         NaN         NaN
+15min       1   random  neto  1684 -0.208 -0.275 -0.151    0.174      -0.254      -0.164
+15min       2 breakout bruto  1339  0.081  0.008  0.154      NaN         NaN         NaN
+15min       2 breakout  neto  1331 -0.006 -0.077  0.063    0.086      -0.018       0.007
+15min       2   random bruto  1250 -0.011 -0.087  0.063      NaN         NaN         NaN
+15min       2   random  neto  1270 -0.104 -0.173 -0.033    0.088      -0.136      -0.072
+```
+</details>
+
+<details><summary>Rejilla oro</summary>
+
+```
+   tf  sl_atr    setup  tipo     n    exp  ci_lo  ci_hi  coste_R  largos_exp  cortos_exp
+ 1min       1 breakout bruto 14621  0.008 -0.015  0.033      NaN         NaN         NaN
+ 1min       1 breakout  neto 15282 -0.295 -0.316 -0.274    0.287      -0.286      -0.303
+ 1min       1   random bruto  2085  0.042 -0.022  0.103      NaN         NaN         NaN
+ 1min       1   random  neto  2111 -0.265 -0.321 -0.210    0.276      -0.266      -0.264
+ 1min       3 breakout bruto  3914  0.028 -0.010  0.066      NaN         NaN         NaN
+ 1min       3 breakout  neto  4063 -0.066 -0.103 -0.030    0.098      -0.046      -0.087
+ 1min       3   random bruto  1460  0.013 -0.043  0.075      NaN         NaN         NaN
+ 1min       3   random  neto  1474 -0.093 -0.150 -0.039    0.090      -0.133      -0.053
+ 5min       1 breakout bruto  3131  0.010 -0.039  0.061      NaN         NaN         NaN
+ 5min       1 breakout  neto  3138 -0.108 -0.152 -0.060    0.126      -0.064      -0.150
+ 5min       1   random bruto  1617  0.040 -0.023  0.108      NaN         NaN         NaN
+ 5min       1   random  neto  1647 -0.078 -0.139 -0.013    0.123      -0.099      -0.056
+ 5min       2 breakout bruto  1835  0.031 -0.027  0.088      NaN         NaN         NaN
+ 5min       2 breakout  neto  1875 -0.038 -0.092  0.018    0.063      -0.017      -0.060
+ 5min       2   random bruto  1190 -0.014 -0.076  0.048      NaN         NaN         NaN
+ 5min       2   random  neto  1204 -0.076 -0.137 -0.011    0.061      -0.106      -0.047
+15min       1 breakout bruto  1230 -0.003 -0.083  0.075      NaN         NaN         NaN
+15min       1 breakout  neto  1223 -0.066 -0.142  0.003    0.087       0.030      -0.163
+15min       1   random bruto  1415  0.023 -0.045  0.093      NaN         NaN         NaN
+15min       1   random  neto  1431 -0.086 -0.154 -0.021    0.089      -0.099      -0.073
+15min       2 breakout bruto   986  0.034 -0.029  0.102      NaN         NaN         NaN
+15min       2 breakout  neto   990 -0.027 -0.095  0.036    0.044       0.035      -0.089
+15min       2   random bruto  1050 -0.012 -0.078  0.055      NaN         NaN         NaN
+15min       2   random  neto  1055 -0.052 -0.114  0.012    0.045      -0.032      -0.072
+```
+</details>
+
+- El coste baja de 0.3–0.4 R (stop 1·ATR M1) a **0.06 R (oro) y 0.11 R (NAS) con stop 2·ATR(M5)**, y a 0.04–0.09 R en M15.
+- Sin costes, la ruptura no tiene ventaja significativa en ninguna escala salvo NAS100 M15 (+0.08 R, IC [+0.01, +0.15]).
+
+**Paso 2, filtros** con ruptura M5 y M15, stop 2·ATR del mismo marco:
+
+| Config | Stop mediano | Duración mediana | Ops/día | Baseline | Benchmark aleatorio |
+|---|---|---|---|---|---|
+| oro M5 | 4.81 $ | 63 min | 2.0 | −0.04 R [−0.09, +0.02] | −0.08 R |
+| oro M15 | 6.86 $ | 278 min | 1.2 | −0.03 R [−0.09, +0.04] | −0.05 R |
+| NAS M5 | 46 pts | 31 min | 2.7 | −0.11 R [−0.15, −0.06] | −0.16 R |
+| NAS M15 | 60 pts | 71 min | 1.5 | −0.01 R [−0.08, +0.07] | −0.10 R |
+
+- **Ningún filtro sale ✅ ni ❌ tras la corrección por comparaciones múltiples.** Con 1–2.5 mil operaciones solo se detectan diferencias de ~0.1–0.15 R.
+- Pistas (sin significación tras Holm): NAS M15 + `spread` **+0.16 R** (p sin corregir 0.04, 223 ops); oro M15 + `volume` +0.06, + `impulse` +0.05, + `structure_break` +0.01 (eliminan operaciones peores en ~0.15 R); NAS M5 + `opening_range` e `impulse` mejoran ~0.03–0.04 R.
+- `trend_m5` y `ema_9_20` no cambian casi nada en M5/M15: la ruptura ya va a favor de la tendencia. **Redundantes** a esta escala.
+- La ruptura gana al benchmark aleatorio en las 4 configuraciones (0.02–0.10 R), pero no lo he probado formalmente.
+
+**Qué demuestra:** con stop ≥ 2·ATR(M5) y solo en la apertura de NY, el coste deja de ser el problema. La estrategia pasa de −0.7/−0.9 R a ≈ 0 R.
+
+**Qué NO demuestra:** que exista ventaja. Ninguna variante es positiva con significación. Tampoco que los filtros no sirvan; falta muestra para verlo.
+
+**Siguiente hipótesis:** (1) más muestra: ampliar la ventana (apertura de Londres para el oro, sesión completa de NY) y analizar ambos instrumentos juntos; (2) ladder con las pistas: NAS M15 + spread + impulse + opening_range; oro M15 + volume + impulse + structure_break; (3) definir `retest` y `score`; (4) probar gestión 1:1.5 / 1:3 y salida por tiempo.
+
+<details><summary>Tablas completas</summary>
+
+#### oro M5
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 1204 | 0.387 | -0.076 | -0.138 | -0.012 | 0.991 | 0.861 | 106.020 |  |  |  |  |
+| baseline | 1875 | 0.391 | -0.038 | -0.091 | 0.017 | 0.924 | 0.931 | 80.109 |  |  |  |  |
+| baseline + trend_m5 | 1834 | 0.395 | -0.031 | -0.086 | 0.024 | 0.875 | 0.943 | 64.113 | -0.036 | -0.089 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 1845 | 0.392 | -0.040 | -0.093 | 0.015 | 0.924 | 0.929 | 84.789 | -0.036 | -0.104 | 1.000 | ➖ sin evidencia |
+| baseline + rejection_candle | 1402 | 0.414 | -0.008 | -0.069 | 0.055 | 0.604 | 0.985 | 28.779 | -0.029 | -0.048 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 1069 | 0.395 | -0.027 | -0.102 | 0.044 | 0.762 | 0.951 | 49.061 | 0.001 | -0.064 | 1.000 | ➖ sin evidencia |
+| baseline + ema_9_20 | 1874 | 0.392 | -0.038 | -0.092 | 0.017 | 0.914 | 0.932 | 79.101 | -0.038 | -1.008 |  | datos insuficientes |
+| baseline + opening_range | 1309 | 0.391 | -0.055 | -0.116 | 0.008 | 0.961 | 0.898 | 80.767 | -0.065 | -0.014 | 1.000 | ➖ sin evidencia |
+| baseline + structure_break | 1804 | 0.389 | -0.047 | -0.102 | 0.009 | 0.951 | 0.915 | 92.306 | -0.048 | 0.047 | 1.000 | ➖ sin evidencia |
+| baseline + impulse | 1087 | 0.404 | 0.006 | -0.065 | 0.081 | 0.436 | 1.011 | 29.911 | 0.021 | -0.080 | 0.407 | ➖ sin evidencia |
+| baseline + pullback | 987 | 0.385 | -0.089 | -0.160 | -0.013 | 0.992 | 0.843 | 108.156 | -0.086 | -0.013 | 1.000 | ➖ sin evidencia |
+| baseline + wick_body_ratio | 842 | 0.406 | -0.035 | -0.114 | 0.046 | 0.807 | 0.935 | 60.471 | -0.043 | -0.037 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 1428 | 0.422 | 0.007 | -0.054 | 0.068 | 0.410 | 1.013 | 27.933 | -0.011 | -0.083 | 0.948 | ➖ sin evidencia |
+| baseline + spread | 793 | 0.402 | -0.033 | -0.116 | 0.053 | 0.780 | 0.940 | 31.817 | -0.022 | -0.048 | 1.000 | ➖ sin evidencia |
+
+#### oro M15
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 1055 | 0.409 | -0.052 | -0.116 | 0.014 | 0.942 | 0.895 | 94.625 |  |  |  |  |
+| baseline | 990 | 0.429 | -0.027 | -0.092 | 0.040 | 0.793 | 0.943 | 46.484 |  |  |  |  |
+| baseline + trend_m5 | 990 | 0.429 | -0.027 | -0.092 | 0.040 | 0.793 | 0.943 | 46.484 | -0.027 |  |  | datos insuficientes |
+| baseline + vwap | 975 | 0.430 | -0.026 | -0.092 | 0.039 | 0.766 | 0.944 | 47.202 | -0.024 | -0.175 | 1.000 | ➖ sin evidencia |
+| baseline + rejection_candle | 564 | 0.436 | -0.032 | -0.121 | 0.058 | 0.760 | 0.933 | 39.310 | 0.003 | -0.052 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 272 | 0.452 | 0.062 | -0.073 | 0.193 | 0.168 | 1.138 | 18.797 | 0.069 | -0.053 | 0.569 | ➖ sin evidencia |
+| baseline + ema_9_20 | 990 | 0.429 | -0.027 | -0.092 | 0.040 | 0.793 | 0.943 | 46.484 | -0.027 |  |  | datos insuficientes |
+| baseline + opening_range | 823 | 0.426 | -0.025 | -0.097 | 0.044 | 0.752 | 0.945 | 44.797 | -0.002 | -0.079 | 0.887 | ➖ sin evidencia |
+| baseline + structure_break | 602 | 0.449 | 0.007 | -0.078 | 0.093 | 0.436 | 1.016 | 19.116 | 0.039 | -0.092 | 0.216 | ➖ sin evidencia |
+| baseline + impulse | 394 | 0.452 | 0.047 | -0.061 | 0.161 | 0.204 | 1.105 | 16.631 | 0.078 | -0.076 | 0.190 | ➖ sin evidencia |
+| baseline + pullback | 289 | 0.426 | -0.050 | -0.174 | 0.074 | 0.775 | 0.899 | 21.495 | 0.020 | -0.039 | 1.000 | ➖ sin evidencia |
+| baseline + wick_body_ratio | 339 | 0.419 | -0.085 | -0.190 | 0.023 | 0.944 | 0.822 | 34.771 | -0.058 | -0.019 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 673 | 0.415 | -0.053 | -0.130 | 0.027 | 0.909 | 0.888 | 43.832 | -0.056 | 0.017 | 1.000 | ➖ sin evidencia |
+| baseline + spread | 426 | 0.437 | 0.003 | -0.097 | 0.103 | 0.468 | 1.007 | 28.690 | 0.020 | -0.059 | 0.887 | ➖ sin evidencia |
+
+#### NAS100 M5
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 1398 | 0.318 | -0.160 | -0.223 | -0.095 | 1.000 | 0.758 | 225.935 |  |  |  |  |
+| baseline | 2583 | 0.338 | -0.106 | -0.153 | -0.057 | 1.000 | 0.836 | 278.599 |  |  |  |  |
+| baseline + trend_m5 | 2539 | 0.337 | -0.111 | -0.161 | -0.062 | 1.000 | 0.828 | 290.867 | -0.111 | 0.018 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 2504 | 0.340 | -0.102 | -0.152 | -0.054 | 1.000 | 0.842 | 270.394 | -0.108 | -0.054 | 1.000 | ➖ sin evidencia |
+| baseline + rejection_candle | 1891 | 0.351 | -0.089 | -0.144 | -0.032 | 0.999 | 0.859 | 193.906 | -0.101 | -0.111 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 996 | 0.308 | -0.126 | -0.206 | -0.042 | 0.999 | 0.818 | 135.899 | -0.136 | -0.089 | 1.000 | ➖ sin evidencia |
+| baseline + ema_9_20 | 2575 | 0.339 | -0.103 | -0.151 | -0.055 | 1.000 | 0.840 | 272.549 | -0.104 | -0.461 | 1.000 | ➖ sin evidencia |
+| baseline + opening_range | 1482 | 0.361 | -0.068 | -0.131 | -0.003 | 0.983 | 0.890 | 121.979 | -0.084 | -0.121 | 1.000 | ➖ sin evidencia |
+| baseline + structure_break | 2463 | 0.341 | -0.102 | -0.154 | -0.052 | 1.000 | 0.840 | 256.637 | -0.104 | -0.124 | 1.000 | ➖ sin evidencia |
+| baseline + impulse | 1583 | 0.345 | -0.075 | -0.141 | -0.010 | 0.990 | 0.884 | 132.116 | -0.092 | -0.121 | 1.000 | ➖ sin evidencia |
+| baseline + pullback | 1512 | 0.315 | -0.158 | -0.222 | -0.095 | 1.000 | 0.765 | 250.953 | -0.163 | -0.055 | 1.000 | ➖ sin evidencia |
+| baseline + wick_body_ratio | 1075 | 0.354 | -0.075 | -0.152 | 0.000 | 0.973 | 0.879 | 109.341 | -0.079 | -0.114 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 535 | 0.350 | -0.104 | -0.207 | 0.002 | 0.976 | 0.835 | 59.761 | -0.105 | -0.106 | 1.000 | ➖ sin evidencia |
+| baseline + spread | 413 | 0.385 | 0.006 | -0.121 | 0.131 | 0.466 | 1.009 | 25.547 | 0.018 | -0.128 | 0.228 | ➖ sin evidencia |
+
+#### NAS100 M15
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 1270 | 0.327 | -0.104 | -0.175 | -0.035 | 0.998 | 0.843 | 158.769 |  |  |  |  |
+| baseline | 1331 | 0.365 | -0.006 | -0.076 | 0.067 | 0.558 | 0.991 | 66.956 |  |  |  |  |
+| baseline + trend_m5 | 1331 | 0.365 | -0.006 | -0.076 | 0.067 | 0.558 | 0.991 | 66.956 | -0.006 |  |  | datos insuficientes |
+| baseline + vwap | 1295 | 0.367 | -0.004 | -0.076 | 0.070 | 0.536 | 0.993 | 63.623 | -0.005 | -0.032 | 1.000 | ➖ sin evidencia |
+| baseline + rejection_candle | 832 | 0.359 | -0.040 | -0.128 | 0.050 | 0.816 | 0.936 | 67.899 | -0.061 | 0.048 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 90 | 0.356 | -0.060 | -0.348 | 0.230 | 0.660 | 0.909 | 10.386 | 0.055 | -0.009 | 1.000 | datos insuficientes |
+| baseline + ema_9_20 | 1330 | 0.365 | -0.005 | -0.077 | 0.067 | 0.558 | 0.992 | 66.956 | -0.004 | -1.007 | 0.424 | datos insuficientes |
+| baseline + opening_range | 971 | 0.364 | -0.022 | -0.104 | 0.063 | 0.717 | 0.964 | 52.269 | -0.048 | 0.048 | 1.000 | ➖ sin evidencia |
+| baseline + structure_break | 888 | 0.368 | -0.012 | -0.099 | 0.076 | 0.610 | 0.980 | 58.960 | -0.012 | 0.001 | 1.000 | ➖ sin evidencia |
+| baseline + impulse | 520 | 0.362 | 0.007 | -0.107 | 0.123 | 0.453 | 1.012 | 19.655 | 0.019 | -0.018 | 1.000 | ➖ sin evidencia |
+| baseline + pullback | 485 | 0.365 | 0.016 | -0.104 | 0.141 | 0.412 | 1.025 | 34.894 | -0.064 | 0.014 | 1.000 | ➖ sin evidencia |
+| baseline + wick_body_ratio | 468 | 0.353 | -0.071 | -0.189 | 0.048 | 0.881 | 0.888 | 58.929 | -0.129 | 0.034 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 228 | 0.355 | -0.129 | -0.281 | 0.030 | 0.953 | 0.789 | 32.517 | -0.205 | 0.018 | 1.000 | ➖ sin evidencia |
+| baseline + spread | 223 | 0.417 | 0.163 | -0.014 | 0.349 | 0.040 | 1.289 | 9.928 | 0.164 | -0.040 | 0.227 | ➖ sin evidencia |
+
+</details>

@@ -47,6 +47,7 @@ class Config:
     exits: Exits
     costs: Costs
     filters: list[tuple[str, dict]]
+    base_filters: list[tuple[str, dict]]  # siempre activos (parte de la hipótesis), no se evalúan
     min_trades: int
     benchmark_random: bool
 
@@ -58,12 +59,13 @@ def load_config(path: str) -> Config:
     c = raw.get("costs", {})
     costs = Costs(c.get("commission", 0.0), c.get("slippage_points", 0) * spec.point)
     filters = [(f["component"], f.get("params", {})) for f in raw.get("filters", [])]
-    for name, params in filters:
+    base = [(f["component"], f.get("params", {})) for f in st.get("base_filters", [])]
+    for name, params in filters + base:
         comps.resolve(name, params)  # valida nombres y parámetros antes de correr nada
     return Config(
         name=raw.get("name", Path(path).stem), spec=spec, data_path=d.get("path"), broker_tz=d.get("broker_tz", "UTC"),
         in_sample_until=s.get("in_sample_until"), setup=st["setup"], setup_params=st.get("setup_params", {}),
-        exits=Exits(st.get("rr", 2.0), st.get("max_bars", 30)), costs=costs, filters=filters,
+        exits=Exits(st.get("rr", 2.0), st.get("max_bars", 30)), costs=costs, filters=filters, base_filters=base,
         min_trades=raw.get("analysis", {}).get("min_trades", 100),
         benchmark_random=raw.get("analysis", {}).get("benchmark_random", True),
     )
@@ -96,7 +98,7 @@ def evaluate(bars: pd.DataFrame, cfg: Config, mode: str) -> pd.DataFrame:
     def run(filters) -> pd.DataFrame:
         key = tuple(n for n, _ in filters)
         if key not in cache:
-            strat = StrategySpec(cfg.setup, cfg.setup_params, filters, cfg.exits)
+            strat = StrategySpec(cfg.setup, cfg.setup_params, cfg.base_filters + list(filters), cfg.exits)
             lo, sh, stop, masks = build_signals(ctx, strat)
             masks_all.update(masks)
             cache[key] = run_backtest(bars, lo, sh, stop, cfg.exits, cfg.costs)
@@ -104,7 +106,8 @@ def evaluate(bars: pd.DataFrame, cfg: Config, mode: str) -> pd.DataFrame:
 
     out = []
     if cfg.benchmark_random:
-        rnd = StrategySpec("random", {"sl_atr": cfg.setup_params.get("sl_atr", 1.0)}, [], cfg.exits)
+        rnd_params = {k: cfg.setup_params[k] for k in ("sl_atr", "tf") if k in cfg.setup_params}
+        rnd = StrategySpec("random", rnd_params, cfg.base_filters, cfg.exits)
         lo, sh, stop, _ = build_signals(ctx, rnd)
         t = run_backtest(bars, lo, sh, stop, cfg.exits, cfg.costs)
         out.append({"variante": "benchmark aleatorio", "probado": None, **stats.summary(t["r"]), **stats.bootstrap_mean(t["r"])})

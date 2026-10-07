@@ -23,7 +23,7 @@ def test_pipeline_runs_and_finds_no_edge_on_random_walk():
     cfg = Config(
         name="t", spec=InstrumentSpec("T", 0.01), data_path=None, broker_tz="UTC", in_sample_until=None,
         setup="breakout", setup_params={}, exits=Exits(2.0, 30), costs=Costs(),
-        filters=[("trend_m5", {}), ("vwap", {}), ("volume", {})], min_trades=50, benchmark_random=True,
+        filters=[("trend_m5", {}), ("vwap", {}), ("volume", {})], base_filters=[], min_trades=50, benchmark_random=True,
     )
     df = evaluate(synthetic_bars(20_000, seed=1), cfg, "ladder")
     assert list(df["variante"]) == ["benchmark aleatorio", "baseline", "+ trend_m5", "+ vwap", "+ volume"]

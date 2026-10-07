@@ -34,6 +34,14 @@ def align_higher_tf(htf: pd.Series, ltf_index: pd.DatetimeIndex, htf_rule: str, 
     return shifted.reindex(ltf_index, method="ffill")
 
 
+def align_higher_tf_events(htf: pd.Series, ltf_index: pd.DatetimeIndex, htf_rule: str, ltf_rule: str = "1min") -> np.ndarray:
+    """Como ``align_higher_tf`` pero para eventos: marca SOLO la barra M1 que cierra la barra
+    del marco superior (no se repite la señal en las barras siguientes)."""
+    shifted = htf.copy()
+    shifted.index = shifted.index + pd.Timedelta(htf_rule) - pd.Timedelta(ltf_rule)
+    return shifted.reindex(ltf_index).fillna(False).to_numpy(bool)
+
+
 def session_frame(index: pd.DatetimeIndex, tz: str, open_time: str) -> pd.DataFrame:
     """Para cada barra: fecha de sesión (anclada en la apertura) y minutos desde la apertura."""
     local = index.tz_convert(tz).tz_localize(None)

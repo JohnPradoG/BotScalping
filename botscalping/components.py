@@ -81,22 +81,35 @@ def _arr(s: pd.Series) -> np.ndarray:
 
 
 # --------------------------------------------------------------------------- setups
-@register("breakout", "setup", "Baseline: cierre rompe el máximo/mínimo de las N barras previas.", lookback=5, sl_atr=1.0)
-def setup_breakout(ctx: Context, lookback: int, sl_atr: float):
-    b = ctx.bars
-    prev_hi = b["high"].rolling(lookback).max().shift()
-    prev_lo = b["low"].rolling(lookback).min().shift()
-    stop = (ctx.atr() * sl_atr).to_numpy()
-    return _arr(b["close"] > prev_hi), _arr(b["close"] < prev_lo), stop
+@register("breakout", "setup", "Baseline: cierre rompe el máximo/mínimo de las N barras previas del marco `tf`; stop = sl_atr·ATR(tf).", lookback=5, sl_atr=1.0, tf="1min")
+def setup_breakout(ctx: Context, lookback: int, sl_atr: float, tf: str):
+    if pd.Timedelta(tf) == pd.Timedelta("1min"):
+        b = ctx.bars
+        prev_hi = b["high"].rolling(lookback).max().shift()
+        prev_lo = b["low"].rolling(lookback).min().shift()
+        stop = (ctx.atr() * sl_atr).to_numpy()
+        return _arr(b["close"] > prev_hi), _arr(b["close"] < prev_lo), stop
+    # Marco superior: la señal se evalúa al cierre de la barra de `tf` y se entra en la siguiente M1.
+    htf = ind.resample_ohlc(ctx.bars, tf)
+    prev_hi = htf["high"].rolling(lookback).max().shift()
+    prev_lo = htf["low"].rolling(lookback).min().shift()
+    long_ = ind.align_higher_tf_events(htf["close"] > prev_hi, ctx.bars.index, tf)
+    short_ = ind.align_higher_tf_events(htf["close"] < prev_lo, ctx.bars.index, tf)
+    stop = (ind.align_higher_tf(ind.atr(htf), ctx.bars.index, tf) * sl_atr).to_numpy()
+    return long_, short_, stop
 
 
-@register("random", "setup", "Benchmark: entradas al azar con la misma gestión. Si un setup no le gana, no tiene ventaja.", prob=0.02, sl_atr=1.0, seed=0)
-def setup_random(ctx: Context, prob: float, sl_atr: float, seed: int):
+@register("random", "setup", "Benchmark: entradas al azar con la misma gestión. Si un setup no le gana, no tiene ventaja.", prob=0.02, sl_atr=1.0, seed=0, tf="1min")
+def setup_random(ctx: Context, prob: float, sl_atr: float, seed: int, tf: str):
     rng = np.random.default_rng(seed)
     n = len(ctx.bars)
     hit = rng.random(n) < prob
     side = rng.random(n) < 0.5
-    stop = (ctx.atr() * sl_atr).to_numpy()
+    if pd.Timedelta(tf) == pd.Timedelta("1min"):
+        atr = ctx.atr()
+    else:
+        atr = ind.align_higher_tf(ind.atr(ind.resample_ohlc(ctx.bars, tf)), ctx.bars.index, tf)
+    stop = (atr * sl_atr).to_numpy()
     return hit & side, hit & ~side, stop
 
 
