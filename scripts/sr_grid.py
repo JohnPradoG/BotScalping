@@ -7,7 +7,7 @@ from botscalping.engine import StrategySpec, build_signals, run_backtest, Costs,
 cfg = load_config(sys.argv[1]); tf = sys.argv[2]
 b, _ = split_by_date(load_mt5_csv(cfg.data_path, cfg.spec.point, cfg.broker_tz), cfg.in_sample_until)
 z = b.assign(spread=0.0)
-mb = 120 if tf == "1min" else 390
+mb = {"1min": 120, "5min": 390, "15min": 720, "60min": 1440}[tf]
 EXITS = {"1:1": Exits(1, mb), "1:2": Exits(2, mb), "trailing 1ATR": Exits(0, mb, trail_atr=1.0),
          "BE 1R + trailing 2ATR": Exits(0, mb, breakeven_r=1.0, trail_atr=2.0, trail_start_r=1.0),
          "cierre al cruzar EMA20": Exits(0, mb, exit_ema=20)}

@@ -567,3 +567,37 @@ quintil
 
 ```
 </details>
+
+### 2026-10-07 · XAUUSD y NAS100 · Rebote con mecha en niveles M15 y H1
+
+**Hipótesis:** con niveles de marcos mayores, el stop es varias veces el spread y la ventaja de la mecha sobrevive al coste.
+
+**Resultado (in-sample, 24/5, `scripts/sr_grid.py` con tf = 15min/60min):** **0 de 120 variantes positivas netas**; ningún IC por encima de 0. Medianas por grupo:
+
+```
+              exp_bruto  exp_neto  stop_med
+sym    tf                                  
+NAS100 15min      0.002    -0.351    16.105
+       60min     -0.006    -0.158    38.513
+XAUUSD 15min     -0.000    -0.204     1.626
+       60min      0.003    -0.084     3.590
+```
+
+Mejores:
+
+```
+   sym    tf  k  mecha                 salida    n  exp_bruto  exp_neto  ci_lo  ci_hi
+XAUUSD 60min  5    0.4                    1:2  842      0.049    -0.033 -0.127  0.068
+XAUUSD 60min 10    0.0                    1:2 1081      0.037    -0.047 -0.134  0.029
+XAUUSD 60min  5    0.4  BE 1R + trailing 2ATR  921      0.063    -0.048 -0.118  0.019
+XAUUSD 60min  5    0.4                    1:1  921      0.044    -0.056 -0.121  0.008
+XAUUSD 60min  3    0.4                    1:2 1124      0.016    -0.058 -0.140  0.020
+XAUUSD 60min 10    0.4 cierre al cruzar EMA20  663      0.023    -0.062 -0.106 -0.010
+XAUUSD 60min 10    0.0                    1:1 1178     -0.001    -0.063 -0.121 -0.009
+XAUUSD 60min  5    0.0                    1:2 1503      0.009    -0.064 -0.135  0.004
+```
+
+- Con niveles más grandes el coste pesa poco (oro H1: ~0.08 R), pero la ventaja bruta también cae a ≈ 0 (+0.00 a +0.06 R).
+- Limitación: el trailing usa el ATR de M1, demasiado ajustado para niveles H1. Las salidas 1:1 y 1:2 sí son válidas, y también dan negativo.
+
+**Qué demuestra:** el rebote con mecha en soporte/resistencia no tiene ventaja neta en ninguna escala probada (M1, M5, M15, H1).
