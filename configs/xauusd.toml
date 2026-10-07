@@ -1,0 +1,71 @@
+# Experimento base para oro. Cada [[filters]] es un componente; el ORDEN es el de la escalera
+# (modo ladder). Para desactivar uno, coméntalo. Parámetros no indicados = valores por defecto
+# del componente (ver botscalping/components.py).
+name = "xauusd_v1"
+
+[data]
+symbol = "XAUUSD"
+path = "data/XAUUSD_M1.csv"
+point = 0.01
+broker_tz = "Etc/GMT-2"          # ajustar a la hora del servidor del bróker (ojo con horario de verano)
+session_tz = "America/New_York"
+session_open = "09:30"
+
+[split]
+in_sample_until = "2025-06-30"   # todo lo posterior es out-of-sample
+
+[strategy]
+setup = "breakout"
+setup_params = { lookback = 5, sl_atr = 1.0 }
+rr = 2.0
+max_bars = 30
+
+[costs]
+commission = 0.0                 # en precio por operación completa
+slippage_points = 5
+
+[analysis]
+min_trades = 100
+benchmark_random = true
+
+[[filters]]
+component = "trend_m5"
+params = { ema = 20 }
+
+[[filters]]
+component = "vwap"
+
+[[filters]]
+component = "rejection_candle"
+
+[[filters]]
+component = "volume"
+
+[[filters]]
+component = "ema_9_20"
+
+[[filters]]
+component = "opening_range"
+params = { minutes = 15 }
+
+[[filters]]
+component = "structure_break"
+
+[[filters]]
+component = "impulse"
+
+[[filters]]
+component = "pullback"
+
+[[filters]]
+component = "wick_body_ratio"
+
+[[filters]]
+component = "volatility"
+
+[[filters]]
+component = "spread"
+
+[[filters]]
+component = "session_hours"
+params = { start = 0, end = 120 }
