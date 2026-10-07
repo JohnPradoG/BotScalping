@@ -38,3 +38,19 @@
 - Stop mediano: unos 10 $ in-sample y unos 38 $ fuera de muestra. Para arriesgar 20 $, eso son lotes de 0,005–0,02, no 0,05 con stop de 4 $.
 
 **Lectura.** Es la primera variante de scalping/intradía que no pierde ni dentro ni fuera de muestra. Pero se eligió entre 64 y ninguna pasa la corrección de Holm. Es un candidato para seguir probando (más datos o en demo), no algo demostrado.
+
+## Mejoras sobre la candidata del oro (`scripts/estructura_mejoras.py`)
+Se elige solo con in-sample. Fuera de muestra se muestra para ver si aguanta. $ = arriesgando 20 $ por operación (lote ajustado al stop), oct 2021 – oct 2026.
+
+| Oro H1 + M5, stop bajo mínimo H1 | in-sample | fuera de muestra | total 20 $/op | ops/día |
+|---|---|---|---|---|
+| base 24/5, 1:2 | +0,013 R (3/5 años) | +0,094 R | +848 $ | 0,86 |
+| + tendencia H4 a favor, 1:2 | +0,048 R (p = 0,21) | +0,178 R | +780 $ (caída máx 410 $) | 0,33 |
+| + volumen, 1:2 | +0,003 R | +0,053 R | +353 $ | 0,73 |
+| solo 7–20 h UTC | −0,01 R | +0,16 R | +719 $ | 0,72 |
+| stop ≤ 3 ATR(M5) (más ajustado) | −0,24 R | ≈ 0 | −2.100 $ | 0,34 |
+
+- **NAS100:** ninguna mejora lo pone en positivo (in-sample entre −0,08 y −0,40 R).
+- **Lección:** ajustar el stop (entrar "más preciso") es lo que más daño hace. Lo que ayuda es pedir más acuerdo de tendencia (H4) y dejar el stop amplio.
+- **Por hora:** operar 24/5 frente a solo Londres/NY no cambia mucho.
+- **Significancia:** la mejor variante no es significativa (p = 0,21 in-sample).
