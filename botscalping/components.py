@@ -190,6 +190,31 @@ def setup_sr_bounce(ctx: Context, k: int, tf: str, tol_atr: float, wick: float, 
     return _emit(ctx, long_c.fillna(False), tf), _emit(ctx, short_c.fillna(False), tf), dist.to_numpy(float)
 
 
+@register("level_bounce", "setup",
+          "Rebote en nivel de horas antes: soporte = mínimo de las barras [t-lookback, t-gap] (resistencia = máximo). "
+          "Compra cuando el precio vuelve a tocarlo (a < tol·ATR M5) y cierra por encima; stop bajo el nivel + buffer.",
+          lookback=240, gap=30, tol_atr=0.3, buffer_atr=0.3, min_stop_atr=0.5, wick=0.0)
+def setup_level_bounce(ctx: Context, lookback: int, gap: int, tol_atr: float, buffer_atr: float, min_stop_atr: float, wick: float):
+    b = ctx.bars
+    a = _atr_tf(ctx, "5min")
+    sup = b["low"].shift(gap).rolling(lookback - gap).min()
+    res = b["high"].shift(gap).rolling(lookback - gap).max()
+    # el nivel debe haber aguantado: en las `gap` barras recientes el precio no lo perforó por cierre
+    held_sup = b["close"].rolling(gap).min() > sup
+    held_res = b["close"].rolling(gap).max() < res
+    rng = (b["high"] - b["low"]).replace(0, np.nan)
+    lower_w = (b[["open", "close"]].min(axis=1) - b["low"]) / rng
+    upper_w = (b["high"] - b[["open", "close"]].max(axis=1)) / rng
+    long_c = (b["low"] <= sup + tol_atr * a) & held_sup & (lower_w >= wick)
+    short_c = (b["high"] >= res - tol_atr * a) & held_res & (upper_w >= wick)
+    long_c &= ~long_c.shift(fill_value=False)
+    short_c &= ~short_c.shift(fill_value=False)
+    d_long = np.maximum(b["close"] - (sup - buffer_atr * a), min_stop_atr * a)
+    d_short = np.maximum((res + buffer_atr * a) - b["close"], min_stop_atr * a)
+    dist = d_long.where(long_c, d_short.where(short_c))
+    return _arr(long_c), _arr(short_c), dist.to_numpy(float)
+
+
 # -------------------------------------------------------------------------- filtros
 @register("trend_m5", "filter", "Tendencia M5: cierre M5 por encima/debajo de su EMA (sin lookahead).", ema=20)
 def f_trend_m5(ctx: Context, ema: int) -> LongShort:

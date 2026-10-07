@@ -40,7 +40,7 @@ def test_breakout_m5_has_no_lookahead(cut):
     assert set(minutes[fl | fs] % 5) <= {4}
 
 
-@pytest.mark.parametrize("name,params", [("sweep", {}), ("sweep", {"tf": "5min"}), ("orb", {}), ("sr_bounce", {}), ("sr_bounce", {"tf": "5min", "wick": 0.3})])
+@pytest.mark.parametrize("name,params", [("sweep", {}), ("sweep", {"tf": "5min"}), ("orb", {}), ("sr_bounce", {}), ("sr_bounce", {"tf": "5min", "wick": 0.3}), ("level_bounce", {})])
 def test_new_setups_have_no_lookahead(name, params):
     comp, p = comps.resolve(name, params)
     fl, fs, fstop = comp.fn(comps.Context(BARS, SPEC), **p)
