@@ -181,13 +181,15 @@ def main(argv=None):
     ap.add_argument("--mode", choices=["ladder", "single", "loo"], default="ladder")
     ap.add_argument("--synthetic", action="store_true", help="usa barras sintéticas (sin ventaja) en vez del CSV")
     ap.add_argument("--out", default="results")
+    ap.add_argument("--validate", action="store_true",
+                    help="evalúa también el out-of-sample. Solo al final, para confirmar: si se mira antes, deja de ser validación")
     a = ap.parse_args(argv)
 
     cfg = load_config(a.config)
     bars = synthetic_bars(60_000) if a.synthetic else load_mt5_csv(cfg.data_path, cfg.spec.point, cfg.broker_tz)
     is_bars, oos_bars = split_by_date(bars, None if a.synthetic else cfg.in_sample_until)
     is_df = evaluate(is_bars, cfg, a.mode)
-    oos_df = evaluate(oos_bars, cfg, a.mode) if len(oos_bars) else None
+    oos_df = evaluate(oos_bars, cfg, a.mode) if a.validate and len(oos_bars) else None
 
     out = Path(a.out) / cfg.name
     out.mkdir(parents=True, exist_ok=True)

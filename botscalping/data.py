@@ -24,7 +24,9 @@ class InstrumentSpec:
 
 def load_mt5_csv(path: str, point: float, broker_tz: str = "UTC") -> pd.DataFrame:
     """Lee un CSV exportado desde MetaTrader 5 y lo normaliza al formato interno."""
-    raw = pd.read_csv(path, sep=None, engine="python")
+    with pd.io.common.get_handle(path, "r", compression="infer") as h:
+        header = h.handle.readline()
+    raw = pd.read_csv(path, sep="\t" if "\t" in header else ",")
     raw.columns = [c.strip().strip("<>").lower() for c in raw.columns]
     if "date" in raw.columns and "time" in raw.columns:
         ts = pd.to_datetime(raw["date"].astype(str) + " " + raw["time"].astype(str), format="mixed")

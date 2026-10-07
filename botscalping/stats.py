@@ -31,7 +31,10 @@ def bootstrap_mean(r: np.ndarray, n_boot: int = 5000, alpha: float = 0.05, seed:
     if len(r) < 2:
         return {"ci_low": np.nan, "ci_high": np.nan, "p_gt_0": np.nan}
     rng = np.random.default_rng(seed)
-    means = r[rng.integers(0, len(r), (n_boot, len(r)))].mean(axis=1)
+    chunk = max(1, 2_000_000 // len(r))  # acota memoria con muestras grandes
+    means = np.concatenate([
+        r[rng.integers(0, len(r), (min(chunk, n_boot - k), len(r)))].mean(axis=1) for k in range(0, n_boot, chunk)
+    ])
     centered = means - r.mean()  # distribución bajo H0 (media 0)
     p = float((centered >= r.mean()).mean())
     lo, hi = np.quantile(means, [alpha / 2, 1 - alpha / 2])

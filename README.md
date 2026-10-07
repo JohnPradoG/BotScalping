@@ -93,6 +93,9 @@ python -m botscalping.experiment configs/xauusd.toml --mode single
 python -m botscalping.experiment configs/xauusd.toml --mode ladder
 python -m botscalping.experiment configs/nas100.toml --mode loo
 
+# Validación final de la Estrategia N (una sola vez): añade el out-of-sample
+python -m botscalping.experiment configs/xauusd.toml --mode ladder --validate
+
 # Sin datos: prueba del pipeline con un paseo aleatorio (no debe salir ventaja)
 python -m botscalping.experiment configs/xauusd.toml --mode ladder --synthetic
 ```
