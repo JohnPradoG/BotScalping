@@ -5,9 +5,9 @@ name = "nas100_v1"
 
 [data]
 symbol = "NAS100"
-path = "data/NAS100_M1.csv"
-point = 0.1
-broker_tz = "Etc/GMT-2"          # ajustar a la hora del servidor del bróker (ojo con horario de verano)
+path = "data/NAS100_M1.csv.gz"
+point = 0.01                     # Exness USTECm
+broker_tz = "UTC"                # servidor Exness = UTC (verificado al exportar)
 session_tz = "America/New_York"
 session_open = "09:30"
 
@@ -22,7 +22,7 @@ max_bars = 30
 
 [costs]
 commission = 0.0                 # en precio por operación completa
-slippage_points = 3
+slippage_points = 30              # = 0.3 en precio (point 0.01)
 
 [analysis]
 min_trades = 100

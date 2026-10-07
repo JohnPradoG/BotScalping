@@ -5,9 +5,9 @@ name = "xauusd_v1"
 
 [data]
 symbol = "XAUUSD"
-path = "data/XAUUSD_M1.csv"
-point = 0.01
-broker_tz = "Etc/GMT-2"          # ajustar a la hora del servidor del bróker (ojo con horario de verano)
+path = "data/XAUUSD_M1.csv.gz"
+point = 0.001                    # Exness XAUUSDm
+broker_tz = "UTC"                # servidor Exness = UTC (verificado al exportar)
 session_tz = "America/New_York"
 session_open = "09:30"
 
@@ -22,7 +22,7 @@ max_bars = 30
 
 [costs]
 commission = 0.0                 # en precio por operación completa
-slippage_points = 5
+slippage_points = 50              # = 0.05 en precio (point 0.001)
 
 [analysis]
 min_trades = 100
