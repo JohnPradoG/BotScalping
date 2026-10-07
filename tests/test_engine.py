@@ -92,3 +92,10 @@ def test_breakeven_moves_stop_to_entry():
     lo, sh = one_signal(3)
     t = run_backtest(bars, lo, sh, np.full(3, 1.0), Exits(rr=3, max_bars=10, breakeven_r=1.0))
     assert t.iloc[0]["r"] == pytest.approx(0.0)
+
+
+def test_fixed_price_target():
+    bars = make_bars([(100, 100, 100, 100), (100, 100.6, 99.8, 100.5)])
+    lo, sh = one_signal(2)
+    t = run_backtest(bars, lo, sh, np.full(2, 2.0), Exits(rr=3, tp_price=0.5))
+    assert t.iloc[0]["reason"] == "target" and t.iloc[0]["r"] == pytest.approx(0.25)

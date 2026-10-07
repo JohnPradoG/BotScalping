@@ -39,6 +39,7 @@ class Exits:
     trail_atr: float = 0.0  # > 0: stop dinámico a k·ATR del mejor precio alcanzado
     trail_start_r: float = 0.0  # el trailing se activa al ir +x R a favor
     exit_ema: int = 0  # > 0: cierra si una vela cierra al otro lado de esta EMA (se "devuelve")
+    tp_price: float = 0.0  # > 0: objetivo fijo en precio (p. ej. 20 pts), sustituye a rr
 
 
 @dataclass
@@ -93,10 +94,10 @@ def run_backtest(bars: pd.DataFrame, long_: np.ndarray, short_: np.ndarray, stop
         e = i + 1
         if side == 1:
             entry = o[e] + spr[e] + costs.slippage
-            sl, tp = entry - d, (np.inf if no_tp else entry + exits.rr * d)
+            sl, tp = entry - d, (entry + exits.tp_price if exits.tp_price > 0 else np.inf if no_tp else entry + exits.rr * d)
         else:
             entry = o[e] - costs.slippage
-            sl, tp = entry + d, (-np.inf if no_tp else entry - exits.rr * d)
+            sl, tp = entry + d, (entry - exits.tp_price if exits.tp_price > 0 else -np.inf if no_tp else entry - exits.rr * d)
         best = entry
         exit_px, reason, j = np.nan, "time", e
         last = min(n - 1, e + exits.max_bars - 1)
