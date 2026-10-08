@@ -1,0 +1,67 @@
+# Método de John: compra en mecha de soporte / venta en mecha de resistencia, 24/5.
+# Filtros candidatos para evitar las trampas. Cada [[filters]] es un componente; el ORDEN es el de la escalera
+# (modo ladder). Para desactivar uno, coméntalo. Parámetros no indicados = valores por defecto
+# del componente (ver botscalping/components.py).
+name = "nas100_mechas_v1"
+
+[data]
+symbol = "NAS100"
+path = "data/NAS100_M1.csv.gz"
+point = 0.01                     # Exness USTECm
+broker_tz = "UTC"                # servidor Exness = UTC (verificado al exportar)
+session_tz = "America/New_York"
+session_open = "09:30"
+
+[split]
+in_sample_until = "2025-06-30"   # todo lo posterior es out-of-sample
+
+[strategy]
+setup = "sr_bounce"
+setup_params = { tf = "1min", k = 5, wick = 0.4 }
+rr = 0                           # sin objetivo fijo: dejarla correr
+max_bars = 120
+breakeven_r = 1.0
+trail_atr = 2.0
+trail_start_r = 1.0
+
+[costs]
+commission = 0.0                 # en precio por operación completa
+slippage_points = 30              # = 0.3 en precio (point 0.01)
+
+[analysis]
+min_trades = 100
+benchmark_random = true
+
+
+[[filters]]
+component = "ema_side"
+
+[[filters]]
+component = "trend_m5"
+
+[[filters]]
+component = "no_momentum_against"
+
+[[filters]]
+component = "rsi_zone"
+
+[[filters]]
+component = "ao_turn"
+
+[[filters]]
+component = "impulse"
+
+[[filters]]
+component = "vwap"
+
+[[filters]]
+component = "volume"
+
+[[filters]]
+component = "volatility"
+
+[[filters]]
+component = "spread"
+
+[[filters]]
+component = "structure_break"

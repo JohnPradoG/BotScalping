@@ -1,0 +1,807 @@
+# Registro de investigación
+
+Una entrada por experimento. Separar siempre **lo que creemos** de **lo que los datos
+demuestran**. Un componente solo pasa a "demostrado" con veredicto ✅ en in-sample y
+confirmación en out-of-sample.
+
+## Estado de los componentes
+
+| Componente | Creemos | Datos (in-sample) | Out-of-sample | Estado |
+|---|---|---|---|---|
+| trend_m5 | filtra contra-tendencia | ❌ oro, ➖ NAS | — | probado con stop 1·ATR M1 |
+| ema_9_20 | | ❌ ambos | — | probado con stop 1·ATR M1 |
+| vwap | | ✅ ambos (+~0.03 R) | — | probado con stop 1·ATR M1 |
+| opening_range | | ✅ NAS, ➖ oro | — | probado con stop 1·ATR M1 |
+| structure_break | | ❌ ambos | — | probado con stop 1·ATR M1 |
+| impulse | | ❌ ambos | — | probado con stop 1·ATR M1 |
+| pullback | | ✅ ambos (+~0.03 R) | — | probado con stop 1·ATR M1 |
+| retest | | — | — | sin implementar |
+| rejection_candle | | ✅ NAS, ➖ oro | — | probado con stop 1·ATR M1 |
+| wick_body_ratio | | ❌ ambos | — | probado con stop 1·ATR M1 |
+| volume | | ❌ ambos | — | probado con stop 1·ATR M1 |
+| volatility | | ✅ ambos (reduce coste relativo) | — | probado con stop 1·ATR M1 |
+| spread | | ✅ ambos (reduce coste relativo) | — | probado con stop 1·ATR M1 |
+| session_hours | | ✅ ambos (reduce coste relativo) | — | probado con stop 1·ATR M1 |
+| score | | — | — | sin implementar |
+| gestión 1:2 / 1:3 | | — | — | sin probar |
+
+## Plantilla de experimento
+
+```
+### AAAA-MM-DD · <instrumento> · <config> · modo <single|ladder|loo>
+Hipótesis:
+Datos: <periodo in-sample> / <periodo out-of-sample>, coste supuesto
+Resultado (con tabla de results/):
+Qué demuestra:
+Qué NO demuestra:
+Decisión / siguiente hipótesis:
+```
+
+## Experimentos
+
+### 2026-10-07 · XAUUSD y NAS100 · xauusd_v1 / nas100_v1 · modo single
+
+**Hipótesis:** el baseline (ruptura de 5 barras M1, stop 1·ATR, 1:2, salida a 30 min) tiene ventaja y algunos filtros la mejoran.
+
+**Datos:** Exness XAUUSDm / USTECm M1, in-sample 27/10/2021 → 30/06/2025 (out-of-sample sin mirar). Coste: spread de cada barra + deslizamiento 0.05 (oro) / 0.3 (NAS) en entrada y salida.
+
+**Resultado:**
+
+- Baseline: **−0.69 R** por operación en oro y **−0.90 R** en NAS100. Peor que el benchmark aleatorio (−0.60 / −0.81).
+- Sin costes, el baseline queda en ≈ 0 R (oro −0.005 [−0.012, +0.001]; NAS +0.009 [+0.003, +0.016]). La señal de ruptura no tiene dirección útil; casi toda la pérdida es coste.
+- Coste ida y vuelta / riesgo (stop 1·ATR M1), mediana: **0.57 R en oro**, **0.94 R en NAS100**. En las 2 h tras la apertura de NY baja a 0.28 / 0.39 R.
+- Filtros con ✅ en los dos instrumentos: `spread`, `session_hours`, `volatility`, `vwap`, `pullback`. Los tres primeros mejoran mucho (oro hasta −0.18 R, NAS −0.11 R con `spread`) porque eligen momentos donde el coste es menor respecto al stop, no porque acierten la dirección. `vwap` y `pullback` mejoran poco (~0.03 R) pero de forma consistente en ambos.
+- Solo en NAS100: `rejection_candle` y `opening_range` ✅. En oro, ➖.
+- ❌ en ambos: `ema_9_20`, `structure_break`, `impulse`, `volume`, `wick_body_ratio`. `trend_m5`: ❌ en oro, ➖ en NAS.
+- Ninguna variante tiene expectativa > 0 (todas con p ≈ 1).
+
+**Qué demuestra:** a escala M1 con stop de 1·ATR la estrategia no es viable con los costes de Exness; el coste por sí solo es 0.6–0.9 R.
+
+**Qué NO demuestra:** que los filtros ✅ den una ventaja direccional; con este nivel de coste dominan los filtros que reducen el coste relativo. Tampoco que los ❌ no sirvan en otra escala de stop.
+
+**Observación de método:** sin costes, el benchmark aleatorio sale ligeramente positivo (+0.02 R) por la deriva alcista de ambos activos en el periodo; conviene compararlo también por lado (largos/cortos).
+
+**Siguiente hipótesis:** subir la escala del riesgo para que el coste pese < 0.15 R (stop más ancho o setup en M5) y operar solo en la ventana de apertura; repetir `single` con los filtros.
+
+<details><summary>Tabla oro (in-sample)</summary>
+
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 24601 | 0.169 | -0.598 | -0.613 | -0.584 | 1.000 | 0.359 | 14721.056 |  |  |  |  |
+| baseline | 214403 | 0.145 | -0.689 | -0.693 | -0.684 | 1.000 | 0.295 | 147640.760 |  |  |  |  |
+| baseline + trend_m5 | 131261 | 0.147 | -0.680 | -0.687 | -0.674 | 1.000 | 0.300 | 89319.112 | -0.694 | -0.681 | 1.000 | ❌ empeora |
+| baseline + vwap | 130386 | 0.151 | -0.666 | -0.672 | -0.660 | 1.000 | 0.310 | 86874.182 | -0.673 | -0.709 | 0.003 | ✅ aporta valor |
+| baseline + rejection_candle | 188996 | 0.147 | -0.682 | -0.687 | -0.677 | 1.000 | 0.299 | 128836.587 | -0.690 | -0.681 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 82844 | 0.150 | -0.668 | -0.676 | -0.660 | 1.000 | 0.308 | 55327.652 | -0.697 | -0.684 | 1.000 | ❌ empeora |
+| baseline + ema_9_20 | 155896 | 0.146 | -0.685 | -0.690 | -0.679 | 1.000 | 0.297 | 106741.817 | -0.702 | -0.663 | 1.000 | ❌ empeora |
+| baseline + opening_range | 80341 | 0.148 | -0.675 | -0.683 | -0.668 | 1.000 | 0.304 | 54256.234 | -0.685 | -0.690 | 1.000 | ➖ sin evidencia |
+| baseline + structure_break | 139346 | 0.145 | -0.686 | -0.692 | -0.680 | 1.000 | 0.296 | 95570.112 | -0.709 | -0.661 | 1.000 | ❌ empeora |
+| baseline + impulse | 68744 | 0.132 | -0.738 | -0.746 | -0.730 | 1.000 | 0.262 | 50705.239 | -0.743 | -0.664 | 1.000 | ❌ empeora |
+| baseline + pullback | 156697 | 0.148 | -0.678 | -0.683 | -0.672 | 1.000 | 0.302 | 106186.140 | -0.680 | -0.712 | 0.003 | ✅ aporta valor |
+| baseline + wick_body_ratio | 22196 | 0.151 | -0.658 | -0.673 | -0.643 | 1.000 | 0.313 | 14614.513 | -0.794 | -0.682 | 1.000 | ❌ empeora |
+| baseline + volatility | 127707 | 0.184 | -0.532 | -0.538 | -0.525 | 1.000 | 0.406 | 67950.309 | -0.532 | -0.912 | 0.003 | ✅ aporta valor |
+| baseline + spread | 19238 | 0.283 | -0.181 | -0.201 | -0.162 | 1.000 | 0.755 | 3485.141 | -0.178 | -0.738 | 0.003 | ✅ aporta valor |
+| baseline + session_hours | 15282 | 0.250 | -0.295 | -0.315 | -0.274 | 1.000 | 0.626 | 4513.913 | -0.294 | -0.719 | 0.003 | ✅ aporta valor |
+
+</details>
+
+<details><summary>Tabla NAS100 (in-sample)</summary>
+
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 24362 | 0.092 | -0.807 | -0.818 | -0.796 | 1.000 | 0.183 | 19654.659 |  |  |  |  |
+| baseline | 266420 | 0.065 | -0.899 | -0.902 | -0.896 | 1.000 | 0.125 | 239401.916 |  |  |  |  |
+| baseline + trend_m5 | 156029 | 0.069 | -0.887 | -0.891 | -0.883 | 1.000 | 0.133 | 138364.274 | -0.900 | -0.897 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 155746 | 0.073 | -0.873 | -0.877 | -0.869 | 1.000 | 0.141 | 135889.142 | -0.881 | -0.922 | 0.003 | ✅ aporta valor |
+| baseline + rejection_candle | 225492 | 0.069 | -0.886 | -0.890 | -0.883 | 1.000 | 0.133 | 199876.978 | -0.894 | -0.921 | 0.003 | ✅ aporta valor |
+| baseline + volume | 81190 | 0.072 | -0.880 | -0.885 | -0.874 | 1.000 | 0.140 | 71413.112 | -0.907 | -0.895 | 1.000 | ❌ empeora |
+| baseline + ema_9_20 | 186234 | 0.068 | -0.889 | -0.893 | -0.885 | 1.000 | 0.131 | 165585.824 | -0.906 | -0.883 | 1.000 | ❌ empeora |
+| baseline + opening_range | 98493 | 0.071 | -0.879 | -0.885 | -0.875 | 1.000 | 0.137 | 86627.462 | -0.889 | -0.904 | 0.003 | ✅ aporta valor |
+| baseline + structure_break | 167889 | 0.068 | -0.889 | -0.892 | -0.885 | 1.000 | 0.131 | 149193.062 | -0.908 | -0.885 | 1.000 | ❌ empeora |
+| baseline + impulse | 82851 | 0.064 | -0.905 | -0.910 | -0.900 | 1.000 | 0.122 | 74978.393 | -0.911 | -0.893 | 1.000 | ❌ empeora |
+| baseline + pullback | 190443 | 0.068 | -0.890 | -0.893 | -0.886 | 1.000 | 0.131 | 169416.960 | -0.892 | -0.915 | 0.003 | ✅ aporta valor |
+| baseline + wick_body_ratio | 22715 | 0.088 | -0.824 | -0.836 | -0.812 | 1.000 | 0.173 | 18718.262 | -0.948 | -0.895 | 1.000 | ❌ empeora |
+| baseline + volatility | 132458 | 0.078 | -0.833 | -0.837 | -0.828 | 1.000 | 0.156 | 110295.636 | -0.836 | -0.959 | 0.003 | ✅ aporta valor |
+| baseline + spread | 6683 | 0.305 | -0.110 | -0.144 | -0.076 | 1.000 | 0.845 | 761.307 | -0.110 | -0.919 | 0.003 | ✅ aporta valor |
+| baseline + session_hours | 17013 | 0.200 | -0.429 | -0.447 | -0.411 | 1.000 | 0.480 | 7301.611 | -0.429 | -0.931 | 0.003 | ✅ aporta valor |
+
+</details>
+
+### 2026-10-07 · XAUUSD y NAS100 · Estrategia 2: más riesgo por operación · modo single
+
+**Hipótesis:** si el stop es lo bastante grande para que el coste pese < 0.15 R, la ruptura y algunos filtros muestran ventaja. Condición fija: solo entradas en las 2 h tras la apertura de NY (`session_hours` como filtro de base).
+
+**Paso 1, escala del stop** (in-sample, ruptura de 5 barras, 1:2; `coste_R` = coste ida y vuelta / riesgo, mediana):
+
+<details><summary>Rejilla NAS100</summary>
+
+```
+   tf  sl_atr    setup  tipo     n    exp  ci_lo  ci_hi  coste_R  largos_exp  cortos_exp
+ 1min       1 breakout bruto 15240  0.019 -0.003  0.041      NaN         NaN         NaN
+ 1min       1 breakout  neto 17013 -0.429 -0.447 -0.411    0.416      -0.419      -0.438
+ 1min       1   random bruto  2057  0.038 -0.028  0.097      NaN         NaN         NaN
+ 1min       1   random  neto  2097 -0.358 -0.412 -0.303    0.395      -0.359      -0.358
+ 1min       3 breakout bruto  4487  0.026 -0.010  0.062      NaN         NaN         NaN
+ 1min       3 breakout  neto  4877 -0.152 -0.189 -0.117    0.144      -0.153      -0.151
+ 1min       3   random bruto  1477 -0.036 -0.101  0.025      NaN         NaN         NaN
+ 1min       3   random  neto  1520 -0.176 -0.232 -0.117    0.132      -0.196      -0.157
+ 5min       1 breakout bruto  3973  0.008 -0.034  0.053      NaN         NaN         NaN
+ 5min       1 breakout  neto  4051 -0.224 -0.262 -0.184    0.215      -0.231      -0.217
+ 5min       1   random bruto  1761 -0.020 -0.084  0.041      NaN         NaN         NaN
+ 5min       1   random  neto  1793 -0.201 -0.263 -0.143    0.213      -0.232      -0.172
+ 5min       2 breakout bruto  2521  0.026 -0.024  0.074      NaN         NaN         NaN
+ 5min       2 breakout  neto  2583 -0.106 -0.153 -0.057    0.112      -0.096      -0.115
+ 5min       2   random bruto  1361 -0.061 -0.129  0.010      NaN         NaN         NaN
+ 5min       2   random  neto  1398 -0.160 -0.227 -0.097    0.108      -0.180      -0.140
+15min       1 breakout bruto  1742  0.081  0.017  0.149      NaN         NaN         NaN
+15min       1 breakout  neto  1750 -0.090 -0.153 -0.026    0.168      -0.078      -0.102
+15min       1   random bruto  1655 -0.049 -0.110  0.011      NaN         NaN         NaN
+15min       1   random  neto  1684 -0.208 -0.275 -0.151    0.174      -0.254      -0.164
+15min       2 breakout bruto  1339  0.081  0.008  0.154      NaN         NaN         NaN
+15min       2 breakout  neto  1331 -0.006 -0.077  0.063    0.086      -0.018       0.007
+15min       2   random bruto  1250 -0.011 -0.087  0.063      NaN         NaN         NaN
+15min       2   random  neto  1270 -0.104 -0.173 -0.033    0.088      -0.136      -0.072
+```
+</details>
+
+<details><summary>Rejilla oro</summary>
+
+```
+   tf  sl_atr    setup  tipo     n    exp  ci_lo  ci_hi  coste_R  largos_exp  cortos_exp
+ 1min       1 breakout bruto 14621  0.008 -0.015  0.033      NaN         NaN         NaN
+ 1min       1 breakout  neto 15282 -0.295 -0.316 -0.274    0.287      -0.286      -0.303
+ 1min       1   random bruto  2085  0.042 -0.022  0.103      NaN         NaN         NaN
+ 1min       1   random  neto  2111 -0.265 -0.321 -0.210    0.276      -0.266      -0.264
+ 1min       3 breakout bruto  3914  0.028 -0.010  0.066      NaN         NaN         NaN
+ 1min       3 breakout  neto  4063 -0.066 -0.103 -0.030    0.098      -0.046      -0.087
+ 1min       3   random bruto  1460  0.013 -0.043  0.075      NaN         NaN         NaN
+ 1min       3   random  neto  1474 -0.093 -0.150 -0.039    0.090      -0.133      -0.053
+ 5min       1 breakout bruto  3131  0.010 -0.039  0.061      NaN         NaN         NaN
+ 5min       1 breakout  neto  3138 -0.108 -0.152 -0.060    0.126      -0.064      -0.150
+ 5min       1   random bruto  1617  0.040 -0.023  0.108      NaN         NaN         NaN
+ 5min       1   random  neto  1647 -0.078 -0.139 -0.013    0.123      -0.099      -0.056
+ 5min       2 breakout bruto  1835  0.031 -0.027  0.088      NaN         NaN         NaN
+ 5min       2 breakout  neto  1875 -0.038 -0.092  0.018    0.063      -0.017      -0.060
+ 5min       2   random bruto  1190 -0.014 -0.076  0.048      NaN         NaN         NaN
+ 5min       2   random  neto  1204 -0.076 -0.137 -0.011    0.061      -0.106      -0.047
+15min       1 breakout bruto  1230 -0.003 -0.083  0.075      NaN         NaN         NaN
+15min       1 breakout  neto  1223 -0.066 -0.142  0.003    0.087       0.030      -0.163
+15min       1   random bruto  1415  0.023 -0.045  0.093      NaN         NaN         NaN
+15min       1   random  neto  1431 -0.086 -0.154 -0.021    0.089      -0.099      -0.073
+15min       2 breakout bruto   986  0.034 -0.029  0.102      NaN         NaN         NaN
+15min       2 breakout  neto   990 -0.027 -0.095  0.036    0.044       0.035      -0.089
+15min       2   random bruto  1050 -0.012 -0.078  0.055      NaN         NaN         NaN
+15min       2   random  neto  1055 -0.052 -0.114  0.012    0.045      -0.032      -0.072
+```
+</details>
+
+- El coste baja de 0.3–0.4 R (stop 1·ATR M1) a **0.06 R (oro) y 0.11 R (NAS) con stop 2·ATR(M5)**, y a 0.04–0.09 R en M15.
+- Sin costes, la ruptura no tiene ventaja significativa en ninguna escala salvo NAS100 M15 (+0.08 R, IC [+0.01, +0.15]).
+
+**Paso 2, filtros** con ruptura M5 y M15, stop 2·ATR del mismo marco:
+
+| Config | Stop mediano | Duración mediana | Ops/día | Baseline | Benchmark aleatorio |
+|---|---|---|---|---|---|
+| oro M5 | 4.81 $ | 63 min | 2.0 | −0.04 R [−0.09, +0.02] | −0.08 R |
+| oro M15 | 6.86 $ | 278 min | 1.2 | −0.03 R [−0.09, +0.04] | −0.05 R |
+| NAS M5 | 46 pts | 31 min | 2.7 | −0.11 R [−0.15, −0.06] | −0.16 R |
+| NAS M15 | 60 pts | 71 min | 1.5 | −0.01 R [−0.08, +0.07] | −0.10 R |
+
+- **Ningún filtro sale ✅ ni ❌ tras la corrección por comparaciones múltiples.** Con 1–2.5 mil operaciones solo se detectan diferencias de ~0.1–0.15 R.
+- Pistas (sin significación tras Holm): NAS M15 + `spread` **+0.16 R** (p sin corregir 0.04, 223 ops); oro M15 + `volume` +0.06, + `impulse` +0.05, + `structure_break` +0.01 (eliminan operaciones peores en ~0.15 R); NAS M5 + `opening_range` e `impulse` mejoran ~0.03–0.04 R.
+- `trend_m5` y `ema_9_20` no cambian casi nada en M5/M15: la ruptura ya va a favor de la tendencia. **Redundantes** a esta escala.
+- La ruptura gana al benchmark aleatorio en las 4 configuraciones (0.02–0.10 R), pero no lo he probado formalmente.
+
+**Qué demuestra:** con stop ≥ 2·ATR(M5) y solo en la apertura de NY, el coste deja de ser el problema. La estrategia pasa de −0.7/−0.9 R a ≈ 0 R.
+
+**Qué NO demuestra:** que exista ventaja. Ninguna variante es positiva con significación. Tampoco que los filtros no sirvan; falta muestra para verlo.
+
+**Siguiente hipótesis:** (1) más muestra: ampliar la ventana (apertura de Londres para el oro, sesión completa de NY) y analizar ambos instrumentos juntos; (2) ladder con las pistas: NAS M15 + spread + impulse + opening_range; oro M15 + volume + impulse + structure_break; (3) definir `retest` y `score`; (4) probar gestión 1:1.5 / 1:3 y salida por tiempo.
+
+<details><summary>Tablas completas</summary>
+
+#### oro M5
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 1204 | 0.387 | -0.076 | -0.138 | -0.012 | 0.991 | 0.861 | 106.020 |  |  |  |  |
+| baseline | 1875 | 0.391 | -0.038 | -0.091 | 0.017 | 0.924 | 0.931 | 80.109 |  |  |  |  |
+| baseline + trend_m5 | 1834 | 0.395 | -0.031 | -0.086 | 0.024 | 0.875 | 0.943 | 64.113 | -0.036 | -0.089 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 1845 | 0.392 | -0.040 | -0.093 | 0.015 | 0.924 | 0.929 | 84.789 | -0.036 | -0.104 | 1.000 | ➖ sin evidencia |
+| baseline + rejection_candle | 1402 | 0.414 | -0.008 | -0.069 | 0.055 | 0.604 | 0.985 | 28.779 | -0.029 | -0.048 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 1069 | 0.395 | -0.027 | -0.102 | 0.044 | 0.762 | 0.951 | 49.061 | 0.001 | -0.064 | 1.000 | ➖ sin evidencia |
+| baseline + ema_9_20 | 1874 | 0.392 | -0.038 | -0.092 | 0.017 | 0.914 | 0.932 | 79.101 | -0.038 | -1.008 |  | datos insuficientes |
+| baseline + opening_range | 1309 | 0.391 | -0.055 | -0.116 | 0.008 | 0.961 | 0.898 | 80.767 | -0.065 | -0.014 | 1.000 | ➖ sin evidencia |
+| baseline + structure_break | 1804 | 0.389 | -0.047 | -0.102 | 0.009 | 0.951 | 0.915 | 92.306 | -0.048 | 0.047 | 1.000 | ➖ sin evidencia |
+| baseline + impulse | 1087 | 0.404 | 0.006 | -0.065 | 0.081 | 0.436 | 1.011 | 29.911 | 0.021 | -0.080 | 0.407 | ➖ sin evidencia |
+| baseline + pullback | 987 | 0.385 | -0.089 | -0.160 | -0.013 | 0.992 | 0.843 | 108.156 | -0.086 | -0.013 | 1.000 | ➖ sin evidencia |
+| baseline + wick_body_ratio | 842 | 0.406 | -0.035 | -0.114 | 0.046 | 0.807 | 0.935 | 60.471 | -0.043 | -0.037 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 1428 | 0.422 | 0.007 | -0.054 | 0.068 | 0.410 | 1.013 | 27.933 | -0.011 | -0.083 | 0.948 | ➖ sin evidencia |
+| baseline + spread | 793 | 0.402 | -0.033 | -0.116 | 0.053 | 0.780 | 0.940 | 31.817 | -0.022 | -0.048 | 1.000 | ➖ sin evidencia |
+
+#### oro M15
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 1055 | 0.409 | -0.052 | -0.116 | 0.014 | 0.942 | 0.895 | 94.625 |  |  |  |  |
+| baseline | 990 | 0.429 | -0.027 | -0.092 | 0.040 | 0.793 | 0.943 | 46.484 |  |  |  |  |
+| baseline + trend_m5 | 990 | 0.429 | -0.027 | -0.092 | 0.040 | 0.793 | 0.943 | 46.484 | -0.027 |  |  | datos insuficientes |
+| baseline + vwap | 975 | 0.430 | -0.026 | -0.092 | 0.039 | 0.766 | 0.944 | 47.202 | -0.024 | -0.175 | 1.000 | ➖ sin evidencia |
+| baseline + rejection_candle | 564 | 0.436 | -0.032 | -0.121 | 0.058 | 0.760 | 0.933 | 39.310 | 0.003 | -0.052 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 272 | 0.452 | 0.062 | -0.073 | 0.193 | 0.168 | 1.138 | 18.797 | 0.069 | -0.053 | 0.569 | ➖ sin evidencia |
+| baseline + ema_9_20 | 990 | 0.429 | -0.027 | -0.092 | 0.040 | 0.793 | 0.943 | 46.484 | -0.027 |  |  | datos insuficientes |
+| baseline + opening_range | 823 | 0.426 | -0.025 | -0.097 | 0.044 | 0.752 | 0.945 | 44.797 | -0.002 | -0.079 | 0.887 | ➖ sin evidencia |
+| baseline + structure_break | 602 | 0.449 | 0.007 | -0.078 | 0.093 | 0.436 | 1.016 | 19.116 | 0.039 | -0.092 | 0.216 | ➖ sin evidencia |
+| baseline + impulse | 394 | 0.452 | 0.047 | -0.061 | 0.161 | 0.204 | 1.105 | 16.631 | 0.078 | -0.076 | 0.190 | ➖ sin evidencia |
+| baseline + pullback | 289 | 0.426 | -0.050 | -0.174 | 0.074 | 0.775 | 0.899 | 21.495 | 0.020 | -0.039 | 1.000 | ➖ sin evidencia |
+| baseline + wick_body_ratio | 339 | 0.419 | -0.085 | -0.190 | 0.023 | 0.944 | 0.822 | 34.771 | -0.058 | -0.019 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 673 | 0.415 | -0.053 | -0.130 | 0.027 | 0.909 | 0.888 | 43.832 | -0.056 | 0.017 | 1.000 | ➖ sin evidencia |
+| baseline + spread | 426 | 0.437 | 0.003 | -0.097 | 0.103 | 0.468 | 1.007 | 28.690 | 0.020 | -0.059 | 0.887 | ➖ sin evidencia |
+
+#### NAS100 M5
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 1398 | 0.318 | -0.160 | -0.223 | -0.095 | 1.000 | 0.758 | 225.935 |  |  |  |  |
+| baseline | 2583 | 0.338 | -0.106 | -0.153 | -0.057 | 1.000 | 0.836 | 278.599 |  |  |  |  |
+| baseline + trend_m5 | 2539 | 0.337 | -0.111 | -0.161 | -0.062 | 1.000 | 0.828 | 290.867 | -0.111 | 0.018 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 2504 | 0.340 | -0.102 | -0.152 | -0.054 | 1.000 | 0.842 | 270.394 | -0.108 | -0.054 | 1.000 | ➖ sin evidencia |
+| baseline + rejection_candle | 1891 | 0.351 | -0.089 | -0.144 | -0.032 | 0.999 | 0.859 | 193.906 | -0.101 | -0.111 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 996 | 0.308 | -0.126 | -0.206 | -0.042 | 0.999 | 0.818 | 135.899 | -0.136 | -0.089 | 1.000 | ➖ sin evidencia |
+| baseline + ema_9_20 | 2575 | 0.339 | -0.103 | -0.151 | -0.055 | 1.000 | 0.840 | 272.549 | -0.104 | -0.461 | 1.000 | ➖ sin evidencia |
+| baseline + opening_range | 1482 | 0.361 | -0.068 | -0.131 | -0.003 | 0.983 | 0.890 | 121.979 | -0.084 | -0.121 | 1.000 | ➖ sin evidencia |
+| baseline + structure_break | 2463 | 0.341 | -0.102 | -0.154 | -0.052 | 1.000 | 0.840 | 256.637 | -0.104 | -0.124 | 1.000 | ➖ sin evidencia |
+| baseline + impulse | 1583 | 0.345 | -0.075 | -0.141 | -0.010 | 0.990 | 0.884 | 132.116 | -0.092 | -0.121 | 1.000 | ➖ sin evidencia |
+| baseline + pullback | 1512 | 0.315 | -0.158 | -0.222 | -0.095 | 1.000 | 0.765 | 250.953 | -0.163 | -0.055 | 1.000 | ➖ sin evidencia |
+| baseline + wick_body_ratio | 1075 | 0.354 | -0.075 | -0.152 | 0.000 | 0.973 | 0.879 | 109.341 | -0.079 | -0.114 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 535 | 0.350 | -0.104 | -0.207 | 0.002 | 0.976 | 0.835 | 59.761 | -0.105 | -0.106 | 1.000 | ➖ sin evidencia |
+| baseline + spread | 413 | 0.385 | 0.006 | -0.121 | 0.131 | 0.466 | 1.009 | 25.547 | 0.018 | -0.128 | 0.228 | ➖ sin evidencia |
+
+#### NAS100 M15
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 1270 | 0.327 | -0.104 | -0.175 | -0.035 | 0.998 | 0.843 | 158.769 |  |  |  |  |
+| baseline | 1331 | 0.365 | -0.006 | -0.076 | 0.067 | 0.558 | 0.991 | 66.956 |  |  |  |  |
+| baseline + trend_m5 | 1331 | 0.365 | -0.006 | -0.076 | 0.067 | 0.558 | 0.991 | 66.956 | -0.006 |  |  | datos insuficientes |
+| baseline + vwap | 1295 | 0.367 | -0.004 | -0.076 | 0.070 | 0.536 | 0.993 | 63.623 | -0.005 | -0.032 | 1.000 | ➖ sin evidencia |
+| baseline + rejection_candle | 832 | 0.359 | -0.040 | -0.128 | 0.050 | 0.816 | 0.936 | 67.899 | -0.061 | 0.048 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 90 | 0.356 | -0.060 | -0.348 | 0.230 | 0.660 | 0.909 | 10.386 | 0.055 | -0.009 | 1.000 | datos insuficientes |
+| baseline + ema_9_20 | 1330 | 0.365 | -0.005 | -0.077 | 0.067 | 0.558 | 0.992 | 66.956 | -0.004 | -1.007 | 0.424 | datos insuficientes |
+| baseline + opening_range | 971 | 0.364 | -0.022 | -0.104 | 0.063 | 0.717 | 0.964 | 52.269 | -0.048 | 0.048 | 1.000 | ➖ sin evidencia |
+| baseline + structure_break | 888 | 0.368 | -0.012 | -0.099 | 0.076 | 0.610 | 0.980 | 58.960 | -0.012 | 0.001 | 1.000 | ➖ sin evidencia |
+| baseline + impulse | 520 | 0.362 | 0.007 | -0.107 | 0.123 | 0.453 | 1.012 | 19.655 | 0.019 | -0.018 | 1.000 | ➖ sin evidencia |
+| baseline + pullback | 485 | 0.365 | 0.016 | -0.104 | 0.141 | 0.412 | 1.025 | 34.894 | -0.064 | 0.014 | 1.000 | ➖ sin evidencia |
+| baseline + wick_body_ratio | 468 | 0.353 | -0.071 | -0.189 | 0.048 | 0.881 | 0.888 | 58.929 | -0.129 | 0.034 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 228 | 0.355 | -0.129 | -0.281 | 0.030 | 0.953 | 0.789 | 32.517 | -0.205 | 0.018 | 1.000 | ➖ sin evidencia |
+| baseline + spread | 223 | 0.417 | 0.163 | -0.014 | 0.349 | 0.040 | 1.289 | 9.928 | 0.164 | -0.040 | 0.227 | ➖ sin evidencia |
+
+</details>
+
+### 2026-10-07 · XAUUSD y NAS100 · Búsqueda amplia (`python -m botscalping.search`)
+
+**Hipótesis (idea de John):** entrar en las mechas (barridas de liquidez) o en la ruptura del rango de apertura, con gestión 1:1 a 1:2, da una ventaja neta.
+
+**Qué se probó (in-sample):** 120 variantes por instrumento: `sweep` (barrida con mecha y cierre de vuelta; M1/M5/M15; lookback 10/20), `orb` (rango de apertura 15/30 min; stop 1–2·ATR M5), `breakout` M5/M15 como referencia. Gestión 1:1, 1:1.5, 1:2. Ventanas: apertura NY 2 h, sesión NY, apertura Londres 2 h, todo el día. Además, momentum intradía (señal de la primera media hora → operar la última media hora).
+
+**Resultado:**
+
+- **Netas de costes: 0 de 240 variantes con expectativa positiva estable.** Ninguna candidata llegó a la validación out-of-sample. La mejor (ruptura M15, apertura NY, 1:1.5) queda en −0.002 R.
+- **Sin costes**, las mechas en M1 sí tienen una ventaja pequeña: +0.02 a +0.04 R (oro, sesión NY: +0.037 R, IC [+0.019, +0.056]; NAS todo el día +0.041 R). Es la única señal consistente en los dos activos (Holm p ≈ 0.06). Las barridas en M15 de Londres en NAS dan +0.13 R bruto con solo ~800 operaciones (no significativo tras Holm).
+- Esa ventaja **desaparece al agrandar el stop**: con stop mínimo de 3–5·ATR M1 queda en ≈ 0 R bruto. Solo existe a escala de ~0.6 $ (oro) / ~5–9 pts (NAS), donde el coste es 0.5–0.8 R, unas 15–20 veces la ventaja.
+- Momentum intradía: sin ventaja in-sample (oro −0.23 $/día neto, NAS −5.6 pts/día).
+
+**Qué demuestra:** con los costes de Exness Standard, ninguna de estas ideas de scalping en M1–M15 gana. La intuición de las mechas tiene algo real, pero vale ~0.02 $ por operación en oro frente a ~0.3 $ de coste.
+
+**Qué NO demuestra:** que no exista ventaja con otra información (ticks, libro de órdenes, noticias) o en horizontes más largos donde el coste pesa poco.
+
+**Nota sobre el lotaje:** el tamaño multiplica el resultado por operación pero no cambia su signo. Con expectativa negativa, más lotaje solo acelera la pérdida.
+
+<details><summary>Salidas</summary>
+
+```
+
+## XAUUSD: 120 variantes probadas, 0 candidatas estables, 0 significativas tras Holm
+                                                        variante    n  win_rate  expectancy_r  ci_low  p_gt_0  p_holm  años_positivos  max_dd_r
+     breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:1.5 1674     0.452        -0.014  -0.060   0.725     1.0               0    41.575
+       breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:1 2008     0.490        -0.026  -0.063   0.909     1.0               0    61.767
+breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 1033     0.456        -0.002  -0.065   0.514     1.0               2    31.136
+       breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:2 1535     0.438        -0.018  -0.068   0.756     1.0               1    42.538
+  breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1 1147     0.496        -0.017  -0.068   0.728     1.0               1    48.378
+   breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:1.5 6132     0.408        -0.044  -0.070   0.998     1.0               1   317.966
+     breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:1 7646     0.477        -0.050  -0.073   1.000     1.0               1   428.653
+     breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:2 5504     0.372        -0.050  -0.083   0.998     1.0               1   326.355
+       orb {'minutes': 30, 'sl_atr': 2.0} | apertura_NY_2h | 1:1 1002     0.486        -0.027  -0.086   0.828     1.0               1    53.896
+   breakout {'tf': '5min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1 2473     0.476        -0.053  -0.087   0.998     1.0               0   137.839
+   breakout {'tf': '5min', 'sl_atr': 2.0} | apertura_NY_2h | 1:2 1875     0.391        -0.038  -0.091   0.922     1.0               0    80.109
+  breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:2  990     0.429        -0.027  -0.092   0.786     1.0               1    46.484
+ breakout {'tf': '5min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 2063     0.414        -0.048  -0.095   0.976     1.0               0   104.421
+            orb {'minutes': 30, 'sl_atr': 2.0} | sesion_NY | 1:1 1210     0.477        -0.046  -0.098   0.958     1.0               1    81.050
+     orb {'minutes': 30, 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 1001     0.419        -0.044  -0.113   0.901     1.0               1    52.768
+Ninguna candidata para validar.
+
+real	1m48.168s
+user	1m37.628s
+sys	0m7.467s
+
+
+## NAS100: 120 variantes probadas, 0 candidatas estables, 0 significativas tras Holm
+                                                        variante    n  win_rate  expectancy_r  ci_low  p_gt_0  p_holm  años_positivos  max_dd_r
+       breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:2 2348     0.390        -0.021  -0.069   0.800     1.0               2   101.048
+  breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1 1608     0.488        -0.028  -0.076   0.873     1.0               2    80.771
+  breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:2 1331     0.365        -0.006  -0.076   0.558     1.0               2    66.956
+       breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:1 3124     0.478        -0.046  -0.082   0.994     1.0               1   169.870
+     breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:1.5 2612     0.415        -0.048  -0.091   0.986     1.0               0   144.425
+breakout {'tf': '15min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 1429     0.404        -0.030  -0.092   0.838     1.0               1    75.243
+     breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:2 5821     0.350        -0.088  -0.119   1.000     1.0               0   538.726
+     breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:1 7849     0.447        -0.106  -0.128   1.000     1.0               0   841.623
+        breakout {'tf': '5min', 'sl_atr': 2.0} | sesion_NY | 1:1 6934     0.451        -0.112  -0.135   1.000     1.0               0   781.961
+      breakout {'tf': '5min', 'sl_atr': 2.0} | sesion_NY | 1:1.5 5656     0.385        -0.106  -0.135   1.000     1.0               0   609.972
+   breakout {'tf': '15min', 'sl_atr': 2.0} | todo_el_dia | 1:1.5 6466     0.380        -0.109  -0.136   1.000     1.0               0   712.849
+ breakout {'tf': '5min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 2816     0.381        -0.095  -0.137   1.000     1.0               0   272.254
+     orb {'minutes': 30, 'sl_atr': 2.0} | apertura_NY_2h | 1:1.5 1020     0.392        -0.068  -0.140   0.970     1.0               1    91.892
+   breakout {'tf': '5min', 'sl_atr': 2.0} | apertura_NY_2h | 1:1 3324     0.448        -0.111  -0.143   1.000     1.0               0   372.401
+          orb {'minutes': 30, 'sl_atr': 2.0} | sesion_NY | 1:1.5 1263     0.386        -0.087  -0.147   0.996     1.0               1   131.779
+Ninguna candidata para validar.
+
+real	1m46.122s
+user	1m35.236s
+sys	0m7.651s
+
+XAUUSD SIN COSTES: 120 variantes; exp>0: 64 ; ci_low>0: 10 ; Holm<0.05: 0
+                                                        variante      n  win_rate  expectancy_r  ci_low  p_holm  años_positivos
+          sweep {'tf': '1min', 'lookback': 20} | sesion_NY | 1:2  23198     0.348         0.037   0.019   0.060               4
+          sweep {'tf': '1min', 'lookback': 10} | sesion_NY | 1:2  30012     0.346         0.031   0.015   0.060               4
+        sweep {'tf': '1min', 'lookback': 10} | todo_el_dia | 1:2 102878     0.344         0.022   0.013   0.060               2
+        sweep {'tf': '1min', 'lookback': 20} | todo_el_dia | 1:2  80595     0.343         0.019   0.009   0.117               2
+        sweep {'tf': '1min', 'lookback': 20} | sesion_NY | 1:1.5  24283     0.410         0.022   0.006   0.232               3
+     sweep {'tf': '1min', 'lookback': 20} | apertura_NY_2h | 1:2   7509     0.347         0.033   0.002   1.000               4
+        sweep {'tf': '1min', 'lookback': 10} | sesion_NY | 1:1.5  32677     0.407         0.014   0.001   1.000               3
+sweep {'tf': '1min', 'lookback': 10} | apertura_Londres_2h | 1:2   9607     0.344         0.028   0.001   1.000               2
+
+NAS100 SIN COSTES: 120 variantes; exp>0: 65 ; ci_low>0: 11 ; Holm<0.05: 0
+                                                         variante      n  win_rate  expectancy_r  ci_low  p_holm  años_positivos
+         sweep {'tf': '1min', 'lookback': 20} | todo_el_dia | 1:2  77263     0.350         0.041   0.031   0.060               3
+sweep {'tf': '15min', 'lookback': 20} | apertura_Londres_2h | 1:2    812     0.379         0.133   0.029   0.406               4
+         sweep {'tf': '1min', 'lookback': 10} | todo_el_dia | 1:2  99757     0.348         0.037   0.028   0.060               3
+sweep {'tf': '15min', 'lookback': 10} | apertura_Londres_2h | 1:2    930     0.373         0.114   0.024   0.741               4
+ sweep {'tf': '5min', 'lookback': 20} | apertura_Londres_2h | 1:2   1721     0.370         0.086   0.023   0.518               4
+       sweep {'tf': '1min', 'lookback': 20} | todo_el_dia | 1:1.5  80478     0.412         0.025   0.016   0.060               3
+       sweep {'tf': '1min', 'lookback': 10} | todo_el_dia | 1:1.5 108029     0.411         0.024   0.016   0.060               3
+        breakout {'tf': '15min', 'sl_atr': 2.0} | sesion_NY | 1:2   2314     0.416         0.060   0.010   1.000               3
+
+XAUUSD
+ min_stop_atr   ventana  tipo     n  stop_med    exp  ci_lo  ci_hi
+          0.5 sesion_NY bruto 22886     0.596  0.038  0.020  0.056
+          0.5 sesion_NY  neto 24286     0.587 -0.542 -0.558 -0.526
+          0.5      todo bruto 79330     0.506  0.018  0.008  0.027
+          0.5      todo  neto 84832     0.495 -0.646 -0.654 -0.639
+          1.5 sesion_NY bruto 16067     1.071  0.040  0.018  0.064
+          1.5 sesion_NY  neto 18113     1.009 -0.304 -0.323 -0.285
+          1.5      todo bruto 58785     0.819  0.010 -0.002  0.022
+          1.5      todo  neto 67814     0.775 -0.414 -0.424 -0.405
+          3.0 sesion_NY bruto  6882     2.277  0.013 -0.017  0.044
+          3.0 sesion_NY  neto  7338     2.219 -0.152 -0.182 -0.121
+          3.0      todo bruto 25811     1.618  0.008 -0.008  0.024
+          3.0      todo  neto 28399     1.544 -0.220 -0.234 -0.205
+          5.0 sesion_NY bruto  4482     3.850 -0.014 -0.046  0.017
+          5.0 sesion_NY  neto  4613     3.784 -0.119 -0.147 -0.090
+          5.0      todo bruto 15486     2.729  0.002 -0.017  0.020
+          5.0      todo  neto 16304     2.665 -0.132 -0.151 -0.115
+
+NAS100
+ min_stop_atr   ventana  tipo     n  stop_med    exp  ci_lo  ci_hi
+          0.5 sesion_NY bruto 25136     8.998  0.002 -0.015  0.021
+          0.5 sesion_NY  neto 26655     8.866 -0.553 -0.566 -0.540
+          0.5      todo bruto 76194     4.666  0.040  0.031  0.051
+          0.5      todo  neto 82786     4.512 -0.814 -0.820 -0.808
+          1.5 sesion_NY bruto 18240    15.489 -0.015 -0.034  0.007
+          1.5 sesion_NY  neto 21019    14.841 -0.360 -0.376 -0.342
+          1.5      todo bruto 56884     7.758  0.015  0.004  0.027
+          1.5      todo  neto 71739     7.018 -0.661 -0.668 -0.653
+          3.0 sesion_NY bruto  8195    30.804 -0.008 -0.037  0.022
+          3.0 sesion_NY  neto  8930    30.129 -0.191 -0.220 -0.168
+          3.0      todo bruto 26214    15.268  0.005 -0.011  0.022
+          3.0      todo  neto 35465    12.022 -0.471 -0.482 -0.458
+          5.0 sesion_NY bruto  5036    50.411 -0.013 -0.044  0.022
+          5.0 sesion_NY  neto  5288    49.760 -0.121 -0.151 -0.089
+          5.0      todo bruto 15651    25.604  0.015 -0.003  0.035
+          5.0      todo  neto 18671    22.143 -0.296 -0.312 -0.280
+
+```
+</details>
+
+### 2026-10-07 · XAUUSD y NAS100 · Método manual de John: rebote en soporte/resistencia (`sr_bounce`)
+
+**Hipótesis (John):** marcar soportes y resistencias pequeños; comprar al tocar el soporte y vender en la resistencia (con mecha); stop detrás del nivel; dejarla correr y cerrar si se gira. 24 h, 5 días.
+
+**Cómo se formalizó:** nivel = último swing confirmado (fractal de k = 3/5/10 velas) en M1 o M5. Entrada en la primera vela que toca el nivel (a < 0.25·ATR) y cierra de vuelta, con o sin mecha (≥ 40 % del rango). Stop detrás del nivel + 0.25·ATR (mínimo 0.5·ATR). Cinco salidas: 1:1, 1:2, trailing 1·ATR, break-even a 1R + trailing 2·ATR, cierre al cruzar la EMA20. Todo el día, in-sample.
+
+**Resultado:** **0 de 120 variantes positivas netas.** Medianas por grupo:
+
+```
+             exp_bruto  exp_neto  stop_med
+sym    tf                                 
+NAS100 1min      0.060    -0.908     3.440
+       5min      0.014    -0.582     8.516
+XAUUSD 1min      0.026    -0.778     0.376
+       5min      0.002    -0.367     0.898
+```
+
+- Sin costes, 85 de 120 son positivas: hay algo de ventaja bruta, sobre todo en NAS100 M1 con trailing (+0.13 a +0.15 R).
+- Pero el stop típico es de ~3 pts en NAS100 y ~0.9 $ en oro, y el coste de una operación es ~5 pts / ~0.3 $. El coste se come entre 0.35 R (oro M5) y 0.95 R (NAS M1) por operación.
+- Las salidas dinámicas (trailing, break-even) mejoran el bruto respecto a 1:1/1:2, pero no cambian el signo.
+
+**Qué demuestra:** tal como está formalizado, el método pierde de forma consistente con el spread de Exness: stops tan pequeños no aguantan el coste.
+
+**Qué NO demuestra:** que la lectura discrecional de John (qué niveles elige, cuándo cierra) no aporte algo que estas reglas no capturan. Tampoco se probó con niveles de marcos mayores (H1/H4) y stops más amplios.
+
+<details><summary>Mejores 15 por expectativa neta</summary>
+
+| sym | tf | k | mecha | salida | n | win | exp_bruto | exp_neto | ci_lo | ci_hi | años_pos | stop_med | dur_med |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| XAUUSD | 5min | 5 | 0.4 | BE 1R + trailing 2ATR | 11664 | 0.296 | 0.024 | -0.347 | -0.369 | -0.325 | 0 | 0.942 | 7.0 |
+| XAUUSD | 5min | 5 | 0.4 | trailing 1ATR | 12824 | 0.213 | 0.025 | -0.349 | -0.361 | -0.337 | 0 | 0.949 | 2.0 |
+| XAUUSD | 5min | 5 | 0.4 | 1:1 | 11885 | 0.348 | -0.011 | -0.349 | -0.367 | -0.33 | 0 | 0.942 | 5.0 |
+| XAUUSD | 5min | 3 | 0.4 | trailing 1ATR | 17564 | 0.209 | 0.017 | -0.353 | -0.363 | -0.343 | 0 | 0.961 | 2.0 |
+| XAUUSD | 5min | 3 | 0.4 | 1:1 | 15668 | 0.346 | -0.023 | -0.354 | -0.369 | -0.339 | 0 | 0.959 | 5.0 |
+| XAUUSD | 5min | 5 | 0.4 | 1:2 | 10930 | 0.233 | -0.015 | -0.356 | -0.38 | -0.331 | 0 | 0.938 | 7.0 |
+| XAUUSD | 5min | 10 | 0.4 | BE 1R + trailing 2ATR | 8018 | 0.282 | 0.01 | -0.358 | -0.386 | -0.329 | 0 | 0.931 | 7.0 |
+| XAUUSD | 5min | 5 | 0.4 | cierre al cruzar EMA20 | 12532 | 0.16 | -0.002 | -0.359 | -0.376 | -0.344 | 0 | 0.949 | 1.0 |
+| XAUUSD | 5min | 10 | 0.4 | trailing 1ATR | 8544 | 0.211 | 0.01 | -0.36 | -0.375 | -0.344 | 0 | 0.944 | 2.0 |
+| XAUUSD | 5min | 3 | 0.4 | BE 1R + trailing 2ATR | 15278 | 0.297 | 0.012 | -0.36 | -0.379 | -0.341 | 0 | 0.961 | 8.0 |
+| XAUUSD | 5min | 3 | 0.4 | 1:2 | 13929 | 0.232 | -0.019 | -0.36 | -0.381 | -0.339 | 0 | 0.96 | 8.0 |
+| XAUUSD | 5min | 10 | 0.4 | 1:1 | 8114 | 0.341 | -0.026 | -0.363 | -0.383 | -0.34 | 0 | 0.931 | 5.0 |
+| XAUUSD | 5min | 5 | 0.0 | BE 1R + trailing 2ATR | 22798 | 0.275 | 0.049 | -0.366 | -0.383 | -0.347 | 0 | 0.857 | 6.0 |
+| XAUUSD | 5min | 3 | 0.4 | cierre al cruzar EMA20 | 17066 | 0.149 | -0.011 | -0.367 | -0.381 | -0.353 | 0 | 0.966 | 1.0 |
+| XAUUSD | 5min | 10 | 0.0 | BE 1R + trailing 2ATR | 16066 | 0.268 | 0.03 | -0.367 | -0.388 | -0.347 | 0 | 0.847 | 6.0 |
+
+</details>
+
+### 2026-10-07 · XAUUSD y NAS100 · ¿Puede el bot evitar las mechas trampa?
+
+**Hipótesis (John):** las compras en mecha funcionan si se evitan las trampas: mechas que se forman contra un movimiento fuerte o por debajo de la media. Hay que enseñárselo al bot.
+
+**Cómo se probó:** setup `sr_bounce` en M1 (k = 5, mecha ≥ 40 %), salida con break-even a 1R y trailing 2·ATR, 24/5, in-sample. Modo `single` con 11 filtros, nuevos (`ema_side`, `no_momentum_against`, `rsi_zone`, `ao_turn`) y anteriores, **con y sin costes**. Además, un modelo de aprendizaje automático (gradient boosting) con 17 variables a la vez: distancia a EMA20/50/200, AO, RSI, velas recientes, volatilidad, volumen, spread y hora. Se entrenó con 2022–2023 y se probó con 2024–jun 2025.
+
+**Resultado:**
+
+- **Sin costes, ningún filtro separa las mechas buenas de las trampas** (todos ➖ tras Holm). Las diferencias entre lo que conservan y lo que eliminan son de ±0.03 R.
+- **Una entrada al azar con la misma salida gana casi lo mismo sin costes:** +0.12 R en NAS y +0.08 R en oro, frente a +0.135 / +0.086 R con la mecha. La ventaja bruta viene sobre todo de la salida (dejar correr con trailing) y de la tendencia alcista del periodo, no de la mecha.
+- Con costes, los filtros que "aportan" (volatilidad, spread y, en oro, EMA/AO/volumen/tendencia) mejoran porque eligen momentos donde el coste pesa menos, no porque esquiven trampas. Ninguna variante llega a positivo; la mejor es `spread`, con −0.18 R (oro) y −0.22 R (NAS).
+- **Modelo:** AUC 0.55 (NAS) y 0.57 (oro). En oro aprende algo: el 20 % de mechas que cree mejores da +0.06 R bruto frente a −0.03 R del 20 % peor. Pero neto sigue en −0.42 R. En NAS no ordena nada útil.
+
+**Qué demuestra:** distinguir trampas es posible solo en parte, y la diferencia vale ~0.1 R. El coste en M1 es 0.5–0.9 R. Ningún filtro sobre M1 puede cerrar esa brecha.
+
+**Qué NO demuestra:** que el criterio visual de John no capture algo que estas 17 variables no tienen. Para eso hace falta su historial real.
+
+<details><summary>Tablas</summary>
+
+#### NAS100 sin costes
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 22535 | 0.292 | 0.119 | 0.095 | 0.144 | 0.000 | 1.234 | 94.917 |  |  |  |  |
+| baseline | 41636 | 0.241 | 0.135 | 0.113 | 0.155 | 0.000 | 1.256 | 93.213 |  |  |  |  |
+| baseline + ema_side | 10415 | 0.260 | 0.129 | 0.088 | 0.171 | 0.000 | 1.246 | 78.226 | 0.136 | 0.135 | 1.000 | ➖ sin evidencia |
+| baseline + trend_m5 | 16909 | 0.243 | 0.134 | 0.100 | 0.169 | 0.000 | 1.255 | 91.694 | 0.138 | 0.133 | 1.000 | ➖ sin evidencia |
+| baseline + no_momentum_against | 37357 | 0.244 | 0.137 | 0.114 | 0.160 | 0.000 | 1.260 | 87.876 | 0.137 | 0.114 | 1.000 | ➖ sin evidencia |
+| baseline + rsi_zone | 12819 | 0.219 | 0.099 | 0.063 | 0.136 | 0.000 | 1.185 | 86.648 | 0.101 | 0.148 | 1.000 | ➖ sin evidencia |
+| baseline + ao_turn | 11139 | 0.258 | 0.106 | 0.067 | 0.144 | 0.000 | 1.203 | 64.285 | 0.109 | 0.143 | 1.000 | ➖ sin evidencia |
+| baseline + impulse | 3791 | 0.256 | 0.169 | 0.094 | 0.244 | 0.000 | 1.316 | 56.494 | 0.154 | 0.133 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 20578 | 0.241 | 0.151 | 0.119 | 0.184 | 0.000 | 1.287 | 68.092 | 0.147 | 0.126 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 10040 | 0.265 | 0.128 | 0.085 | 0.172 | 0.000 | 1.236 | 65.005 | 0.126 | 0.137 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 21667 | 0.235 | 0.101 | 0.072 | 0.130 | 0.000 | 1.191 | 67.529 | 0.099 | 0.173 | 1.000 | ❌ empeora |
+| baseline + spread | 41636 | 0.241 | 0.135 | 0.113 | 0.155 | 0.000 | 1.256 | 93.213 | 0.135 |  |  | datos insuficientes |
+| baseline + structure_break | 211 | 0.336 | 0.058 | -0.172 | 0.311 | 0.305 | 1.110 | 18.943 | 0.031 | 0.135 | 1.000 | ➖ sin evidencia |
+
+#### NAS100 con costes
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 24204 | 0.074 | -0.800 | -0.814 | -0.787 | 1.000 | 0.157 | 19368.415 |  |  |  |  |
+| baseline | 47276 | 0.053 | -0.898 | -0.906 | -0.888 | 1.000 | 0.115 | 42439.987 |  |  |  |  |
+| baseline + ema_side | 10972 | 0.068 | -0.852 | -0.871 | -0.833 | 1.000 | 0.134 | 9351.407 | -0.876 | -0.904 | 0.064 | ➖ sin evidencia |
+| baseline + trend_m5 | 17826 | 0.058 | -0.874 | -0.889 | -0.857 | 1.000 | 0.129 | 15580.516 | -0.893 | -0.900 | 1.000 | ➖ sin evidencia |
+| baseline + no_momentum_against | 42182 | 0.054 | -0.896 | -0.906 | -0.886 | 1.000 | 0.114 | 37802.629 | -0.897 | -0.906 | 1.000 | ➖ sin evidencia |
+| baseline + rsi_zone | 13367 | 0.048 | -0.899 | -0.916 | -0.882 | 1.000 | 0.116 | 12020.723 | -0.907 | -0.894 | 1.000 | ➖ sin evidencia |
+| baseline + ao_turn | 11527 | 0.066 | -0.865 | -0.883 | -0.847 | 1.000 | 0.123 | 9975.336 | -0.876 | -0.904 | 0.034 | ✅ aporta valor |
+| baseline + impulse | 3921 | 0.062 | -0.877 | -0.909 | -0.841 | 1.000 | 0.133 | 3438.331 | -0.886 | -0.899 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 21701 | 0.054 | -0.901 | -0.914 | -0.888 | 1.000 | 0.114 | 19552.805 | -0.917 | -0.882 | 1.000 | ❌ empeora |
+| baseline + volume | 10413 | 0.066 | -0.882 | -0.901 | -0.861 | 1.000 | 0.129 | 9179.404 | -0.890 | -0.900 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 24218 | 0.062 | -0.836 | -0.850 | -0.823 | 1.000 | 0.138 | 20257.773 | -0.837 | -0.961 | 0.002 | ✅ aporta valor |
+| baseline + spread | 1903 | 0.174 | -0.220 | -0.308 | -0.126 | 1.000 | 0.669 | 436.063 | -0.225 | -0.926 | 0.002 | ✅ aporta valor |
+| baseline + structure_break | 213 | 0.131 | -0.748 | -0.853 | -0.638 | 1.000 | 0.159 | 159.312 | -0.771 | -0.898 | 0.363 | ➖ sin evidencia |
+
+#### Oro sin costes
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 23365 | 0.283 | 0.083 | 0.060 | 0.106 | 0.000 | 1.165 | 94.251 |  |  |  |  |
+| baseline | 46696 | 0.237 | 0.086 | 0.067 | 0.106 | 0.000 | 1.163 | 240.278 |  |  |  |  |
+| baseline + ema_side | 10986 | 0.266 | 0.090 | 0.053 | 0.128 | 0.000 | 1.174 | 62.299 | 0.107 | 0.081 | 1.000 | ➖ sin evidencia |
+| baseline + trend_m5 | 18059 | 0.248 | 0.102 | 0.072 | 0.133 | 0.000 | 1.195 | 122.206 | 0.106 | 0.076 | 0.720 | ➖ sin evidencia |
+| baseline + no_momentum_against | 42413 | 0.239 | 0.091 | 0.070 | 0.111 | 0.000 | 1.172 | 232.270 | 0.089 | 0.064 | 1.000 | ➖ sin evidencia |
+| baseline + rsi_zone | 14443 | 0.208 | 0.076 | 0.042 | 0.112 | 0.000 | 1.143 | 247.157 | 0.077 | 0.090 | 1.000 | ➖ sin evidencia |
+| baseline + ao_turn | 12869 | 0.258 | 0.102 | 0.067 | 0.137 | 0.000 | 1.197 | 108.795 | 0.101 | 0.081 | 1.000 | ➖ sin evidencia |
+| baseline + impulse | 4263 | 0.247 | 0.075 | 0.012 | 0.139 | 0.008 | 1.141 | 67.266 | 0.083 | 0.086 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 22280 | 0.241 | 0.077 | 0.050 | 0.104 | 0.000 | 1.145 | 192.568 | 0.084 | 0.088 | 1.000 | ➖ sin evidencia |
+| baseline + volume | 13608 | 0.265 | 0.091 | 0.057 | 0.127 | 0.000 | 1.171 | 98.813 | 0.101 | 0.081 | 1.000 | ➖ sin evidencia |
+| baseline + volatility | 30431 | 0.234 | 0.070 | 0.047 | 0.093 | 0.000 | 1.133 | 203.628 | 0.071 | 0.114 | 1.000 | ➖ sin evidencia |
+| baseline + spread | 46696 | 0.237 | 0.086 | 0.067 | 0.106 | 0.000 | 1.163 | 240.278 | 0.086 |  |  | datos insuficientes |
+| baseline + structure_break | 200 | 0.290 | -0.005 | -0.193 | 0.195 | 0.502 | 0.990 | 15.254 | 0.015 | 0.086 | 1.000 | ➖ sin evidencia |
+
+#### Oro con costes
+| variante | n | win_rate | expectancy_r | ci_low | ci_high | p_gt_0 | profit_factor | max_dd_r | conserva_exp | elimina_exp | p_aporta_holm | veredicto |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| benchmark aleatorio | 24416 | 0.133 | -0.592 | -0.609 | -0.575 | 1.000 | 0.310 | 14457.991 |  |  |  |  |
+| baseline | 51695 | 0.097 | -0.744 | -0.755 | -0.732 | 1.000 | 0.226 | 38457.563 |  |  |  |  |
+| baseline + ema_side | 11472 | 0.129 | -0.641 | -0.667 | -0.615 | 1.000 | 0.292 | 7365.782 | -0.652 | -0.767 | 0.002 | ✅ aporta valor |
+| baseline + trend_m5 | 18986 | 0.109 | -0.692 | -0.712 | -0.672 | 1.000 | 0.261 | 13138.381 | -0.707 | -0.762 | 0.002 | ✅ aporta valor |
+| baseline + no_momentum_against | 46788 | 0.099 | -0.734 | -0.746 | -0.722 | 1.000 | 0.232 | 34367.412 | -0.735 | -0.822 | 0.002 | ✅ aporta valor |
+| baseline + rsi_zone | 14995 | 0.076 | -0.800 | -0.819 | -0.780 | 1.000 | 0.189 | 12004.804 | -0.805 | -0.720 | 1.000 | ❌ empeora |
+| baseline + ao_turn | 13286 | 0.113 | -0.697 | -0.719 | -0.675 | 1.000 | 0.248 | 9268.777 | -0.707 | -0.755 | 0.002 | ✅ aporta valor |
+| baseline + impulse | 4415 | 0.091 | -0.775 | -0.813 | -0.736 | 1.000 | 0.206 | 3435.935 | -0.779 | -0.740 | 1.000 | ➖ sin evidencia |
+| baseline + vwap | 23430 | 0.103 | -0.729 | -0.745 | -0.712 | 1.000 | 0.237 | 17088.204 | -0.738 | -0.748 | 0.692 | ➖ sin evidencia |
+| baseline + volume | 14050 | 0.123 | -0.680 | -0.702 | -0.657 | 1.000 | 0.266 | 9559.895 | -0.685 | -0.764 | 0.002 | ✅ aporta valor |
+| baseline + volatility | 33095 | 0.113 | -0.637 | -0.652 | -0.621 | 1.000 | 0.285 | 21080.781 | -0.638 | -0.929 | 0.002 | ✅ aporta valor |
+| baseline + spread | 5148 | 0.189 | -0.180 | -0.230 | -0.130 | 1.000 | 0.721 | 935.111 | -0.179 | -0.806 | 0.002 | ✅ aporta valor |
+| baseline + structure_break | 201 | 0.184 | -0.633 | -0.783 | -0.464 | 1.000 | 0.294 | 128.621 | -0.657 | -0.744 | 0.692 | ➖ sin evidencia |
+
+#### Modelo
+```
+NAS100: entrenamiento 21630 operaciones, prueba 18280
+AUC prueba = 0.550  (0.5 = no distingue)
+Operaciones de prueba por quintil de probabilidad predicha (4 = las que el modelo cree mejores):
+            n  exp_bruto  exp_neto
+quintil                           
+0        3658      0.130    -0.646
+1        3654      0.193    -0.833
+2        3656      0.112    -0.848
+3        3656      0.083    -0.825
+4        3656      0.112    -0.778
+
+XAUUSD: entrenamiento 24081 operaciones, prueba 20627
+AUC prueba = 0.573  (0.5 = no distingue)
+Operaciones de prueba por quintil de probabilidad predicha (4 = las que el modelo cree mejores):
+            n  exp_bruto  exp_neto
+quintil                           
+0        4126     -0.028    -0.660
+1        4136      0.008    -0.613
+2        4114      0.031    -0.602
+3        4125      0.053    -0.519
+4        4126      0.063    -0.415
+
+```
+</details>
+
+### 2026-10-07 · XAUUSD y NAS100 · Rebote con mecha en niveles M15 y H1
+
+**Hipótesis:** con niveles de marcos mayores, el stop es varias veces el spread y la ventaja de la mecha sobrevive al coste.
+
+**Resultado (in-sample, 24/5, `scripts/sr_grid.py` con tf = 15min/60min):** **0 de 120 variantes positivas netas**; ningún IC por encima de 0. Medianas por grupo:
+
+```
+              exp_bruto  exp_neto  stop_med
+sym    tf                                  
+NAS100 15min      0.002    -0.351    16.105
+       60min     -0.006    -0.158    38.513
+XAUUSD 15min     -0.000    -0.204     1.626
+       60min      0.003    -0.084     3.590
+```
+
+Mejores:
+
+```
+   sym    tf  k  mecha                 salida    n  exp_bruto  exp_neto  ci_lo  ci_hi
+XAUUSD 60min  5    0.4                    1:2  842      0.049    -0.033 -0.127  0.068
+XAUUSD 60min 10    0.0                    1:2 1081      0.037    -0.047 -0.134  0.029
+XAUUSD 60min  5    0.4  BE 1R + trailing 2ATR  921      0.063    -0.048 -0.118  0.019
+XAUUSD 60min  5    0.4                    1:1  921      0.044    -0.056 -0.121  0.008
+XAUUSD 60min  3    0.4                    1:2 1124      0.016    -0.058 -0.140  0.020
+XAUUSD 60min 10    0.4 cierre al cruzar EMA20  663      0.023    -0.062 -0.106 -0.010
+XAUUSD 60min 10    0.0                    1:1 1178     -0.001    -0.063 -0.121 -0.009
+XAUUSD 60min  5    0.0                    1:2 1503      0.009    -0.064 -0.135  0.004
+```
+
+- Con niveles más grandes el coste pesa poco (oro H1: ~0.08 R), pero la ventaja bruta también cae a ≈ 0 (+0.00 a +0.06 R).
+- Limitación: el trailing usa el ATR de M1, demasiado ajustado para niveles H1. Las salidas 1:1 y 1:2 sí son válidas, y también dan negativo.
+
+**Qué demuestra:** el rebote con mecha en soporte/resistencia no tiene ventaja neta en ninguna escala probada (M1, M5, M15, H1).
+
+### 2026-10-07 · XAUUSD y NAS100 · Rebote en niveles de horas antes (`level_bounce`)
+
+**Hipótesis (ejemplo M5 de John):** el soporte que funciona es un nivel de horas antes (el mínimo de la mañana), no el último swing de M1.
+
+**Cómo se probó:** soporte = mínimo de las últimas 1/2/4/8 h, excluyendo la última parte; el nivel debe haber aguantado (ningún cierre por debajo desde entonces). Entrada al volver a tocarlo (a < 0.3·ATR M5) y cerrar por encima, con o sin mecha. Stop bajo el nivel + 0.3·ATR M5; gestión 1:1, 1:1.5, 1:2. Simétrico en resistencias. 24/5, in-sample.
+
+**Resultado:** **0 de 48 variantes positivas netas**, y **también negativas SIN costes** (−0.07 a +0.003 R): el nivel aguanta y se rompe casi a partes iguales.
+
+```
+NAS100 | netas > 0: 0 de 24
+ horas  mecha  rr  exp_bruto  exp_neto     n   win  ci_lo  ci_hi   p  años_pos  stop_med  coste_R
+   8.0    0.4 1.5     -0.046    -0.586  3139 0.181 -0.618 -0.550 1.0         0     9.149    0.523
+   8.0    0.4 1.0     -0.038    -0.589  3202 0.224 -0.620 -0.560 1.0         0     9.262    0.518
+   8.0    0.4 2.0     -0.018    -0.597  3097 0.149 -0.635 -0.562 1.0         0     9.011    0.527
+   4.0    0.4 1.0     -0.039    -0.627  6916 0.208 -0.647 -0.608 1.0         0     8.090    0.578
+   2.0    0.4 1.0     -0.033    -0.633 14657 0.207 -0.647 -0.620 1.0         0     7.669    0.606
+   8.0    0.0 1.0     -0.071    -0.638  5568 0.204 -0.663 -0.617 1.0         0     8.309    0.581
+   4.0    0.4 1.5     -0.042    -0.639  6781 0.163 -0.662 -0.616 1.0         0     7.984    0.589
+   2.0    0.4 1.5     -0.026    -0.640 14312 0.164 -0.655 -0.626 1.0         0     7.592    0.615
+   2.0    0.4 2.0     -0.026    -0.642 14048 0.137 -0.659 -0.623 1.0         0     7.553    0.620
+   8.0    0.0 1.5     -0.065    -0.642  5396 0.162 -0.668 -0.617 1.0         0     8.133    0.597
+   4.0    0.4 2.0     -0.034    -0.644  6704 0.135 -0.669 -0.619 1.0         0     7.928    0.596
+   1.0    0.4 1.0     -0.039    -0.645 21295 0.201 -0.656 -0.634 1.0         0     7.491    0.620
+   8.0    0.0 2.0     -0.059    -0.648  5298 0.134 -0.676 -0.621 1.0         0     8.018    0.604
+   1.0    0.4 1.5     -0.032    -0.649 20484 0.160 -0.662 -0.636 1.0         0     7.382    0.633
+   1.0    0.4 2.0     -0.024    -0.655 19697 0.132 -0.669 -0.641 1.0         0     7.330    0.642
+   4.0    0.0 1.0     -0.059    -0.670 11821 0.189 -0.686 -0.656 1.0         0     7.422    0.636
+   2.0    0.0 1.0     -0.037    -0.671 24948 0.189 -0.682 -0.661 1.0         0     7.059    0.665
+   1.0    0.0 1.0     -0.032    -0.676 35678 0.187 -0.684 -0.667 1.0         0     6.966    0.673
+   2.0    0.0 1.5     -0.031    -0.676 24023 0.151 -0.688 -0.664 1.0         0     6.944    0.682
+   4.0    0.0 1.5     -0.049    -0.677 11456 0.150 -0.695 -0.659 1.0         0     7.247    0.653
+   2.0    0.0 2.0     -0.025    -0.678 23306 0.126 -0.691 -0.664 1.0         0     6.861    0.695
+   4.0    0.0 2.0     -0.046    -0.681 11232 0.124 -0.700 -0.662 1.0         0     7.152    0.665
+   1.0    0.0 1.5     -0.024    -0.682 33712 0.148 -0.691 -0.672 1.0         0     6.803    0.694
+   1.0    0.0 2.0     -0.013    -0.688 32120 0.122 -0.698 -0.676 1.0         0     6.672    0.714
+
+XAUUSD | netas > 0: 0 de 24
+ horas  mecha  rr  exp_bruto  exp_neto     n   win  ci_lo  ci_hi   p  años_pos  stop_med  coste_R
+   8.0    0.4 2.0     -0.021    -0.352  3560 0.234 -0.393 -0.308 1.0         0     0.890    0.337
+   8.0    0.4 1.5     -0.045    -0.361  3637 0.276 -0.400 -0.322 1.0         0     0.892    0.336
+   8.0    0.4 1.0     -0.039    -0.380  3780 0.333 -0.413 -0.348 1.0         0     0.899    0.333
+   2.0    0.4 1.0     -0.012    -0.384 15655 0.334 -0.400 -0.370 1.0         0     0.827    0.358
+   4.0    0.4 1.0     -0.020    -0.389  7764 0.330 -0.411 -0.368 1.0         0     0.854    0.347
+   2.0    0.4 1.5     -0.011    -0.389 14954 0.267 -0.407 -0.371 1.0         0     0.818    0.362
+   1.0    0.4 1.0     -0.017    -0.393 21612 0.330 -0.407 -0.380 1.0         0     0.825    0.357
+   2.0    0.4 2.0     -0.014    -0.394 14443 0.223 -0.416 -0.372 1.0         0     0.815    0.364
+   8.0    0.0 1.5     -0.039    -0.395  5584 0.264 -0.422 -0.366 1.0         0     0.841    0.361
+   4.0    0.4 1.5     -0.022    -0.395  7441 0.264 -0.421 -0.369 1.0         0     0.843    0.351
+   4.0    0.4 2.0     -0.012    -0.401  7254 0.221 -0.429 -0.371 1.0         0     0.840    0.354
+   1.0    0.4 1.5     -0.019    -0.401 20278 0.263 -0.417 -0.387 1.0         0     0.815    0.361
+   8.0    0.0 1.0     -0.046    -0.401  5897 0.324 -0.426 -0.377 1.0         0     0.845    0.358
+   8.0    0.0 2.0     -0.027    -0.402  5367 0.219 -0.434 -0.368 1.0         0     0.835    0.364
+   2.0    0.0 1.0     -0.001    -0.403 24678 0.327 -0.416 -0.391 1.0         0     0.785    0.379
+   1.0    0.0 1.0     -0.007    -0.405 34766 0.326 -0.415 -0.395 1.0         0     0.786    0.377
+   1.0    0.4 2.0     -0.021    -0.406 19108 0.220 -0.424 -0.388 1.0         0     0.812    0.363
+   2.0    0.0 1.5      0.003    -0.406 22935 0.262 -0.422 -0.391 1.0         0     0.776    0.383
+   4.0    0.0 1.0     -0.017    -0.411 12082 0.322 -0.428 -0.393 1.0         0     0.802    0.373
+   1.0    0.0 1.5     -0.000    -0.412 31473 0.260 -0.423 -0.399 1.0         0     0.775    0.383
+   1.0    0.0 2.0     -0.001    -0.416 28955 0.217 -0.431 -0.402 1.0         0     0.772    0.384
+   4.0    0.0 1.5     -0.012    -0.416 11362 0.257 -0.435 -0.396 1.0         0     0.793    0.378
+   2.0    0.0 2.0      0.000    -0.417 21660 0.218 -0.433 -0.398 1.0         0     0.771    0.386
+   4.0    0.0 2.0     -0.013    -0.431 10892 0.213 -0.455 -0.406 1.0         0     0.788    0.380
+
+```
+
+### 2026-10-07 · XAUUSD y NAS100 · `level_bounce` operando todo en M5 (preferencia de John)
+
+Mismas reglas que el experimento anterior, pero con niveles, entradas y salidas sobre velas de M5. **0 de 48 netas positivas; también negativas sin costes** (−0.07 a −0.01 R). El coste baja a 0.25 R (oro) y 0.40 R (NAS), pero no hay ventaja que cubrirlo.
+
+```
+NAS100 | netas > 0: 0 de 24
+ horas  mecha  rr  exp_bruto  exp_neto     n   win  ci_lo  ci_hi   p  años_pos  stop_med  coste_R
+   8.0    0.4 2.0     -0.012    -0.455  2628 0.196 -0.497 -0.409 1.0         0    11.830    0.397
+   8.0    0.4 1.5     -0.019    -0.459  2647 0.230 -0.499 -0.421 1.0         0    11.863    0.395
+   8.0    0.4 1.0     -0.021    -0.475  2694 0.277 -0.509 -0.441 1.0         0    12.039    0.387
+   4.0    0.4 2.0     -0.020    -0.519  5440 0.176 -0.550 -0.489 1.0         0    10.570    0.442
+   4.0    0.4 1.0     -0.031    -0.520  5579 0.256 -0.543 -0.498 1.0         0    10.679    0.435
+   4.0    0.4 1.5     -0.026    -0.522  5491 0.207 -0.549 -0.496 1.0         0    10.614    0.440
+   8.0    0.0 2.0     -0.059    -0.529  4478 0.172 -0.561 -0.495 1.0         0    10.428    0.454
+   8.0    0.0 1.5     -0.062    -0.533  4546 0.201 -0.561 -0.505 1.0         0    10.482    0.451
+   2.0    0.4 2.0     -0.013    -0.534 10916 0.170 -0.554 -0.515 1.0         0    10.104    0.459
+   2.0    0.4 1.0     -0.034    -0.536 11453 0.250 -0.552 -0.521 1.0         0    10.215    0.455
+   2.0    0.4 1.5     -0.025    -0.537 11179 0.201 -0.556 -0.519 1.0         0    10.154    0.457
+   8.0    0.0 1.0     -0.072    -0.542  4647 0.246 -0.569 -0.518 1.0         0    10.590    0.443
+   1.0    0.4 1.0     -0.039    -0.544 15936 0.246 -0.557 -0.530 1.0         0     9.912    0.467
+   1.0    0.4 1.5     -0.027    -0.548 15218 0.197 -0.564 -0.531 1.0         0     9.838    0.473
+   1.0    0.4 2.0     -0.019    -0.550 14590 0.166 -0.568 -0.533 1.0         0     9.727    0.479
+   4.0    0.0 2.0     -0.027    -0.557  9175 0.164 -0.580 -0.536 1.0         0     9.468    0.495
+   4.0    0.0 1.0     -0.050    -0.557  9552 0.240 -0.575 -0.539 1.0         0     9.590    0.485
+   4.0    0.0 1.5     -0.027    -0.559  9353 0.193 -0.579 -0.539 1.0         0     9.508    0.491
+   2.0    0.0 1.5     -0.025    -0.566 18932 0.190 -0.580 -0.553 1.0         0     9.185    0.504
+   2.0    0.0 1.0     -0.041    -0.567 19766 0.236 -0.578 -0.555 1.0         0     9.255    0.500
+   1.0    0.0 1.0     -0.035    -0.569 27302 0.235 -0.578 -0.559 1.0         0     9.086    0.508
+   1.0    0.0 1.5     -0.014    -0.571 25257 0.189 -0.582 -0.558 1.0         0     8.945    0.519
+   2.0    0.0 2.0     -0.021    -0.574 18143 0.158 -0.589 -0.557 1.0         0     9.124    0.510
+   1.0    0.0 2.0     -0.005    -0.575 23711 0.158 -0.589 -0.561 1.0         0     8.845    0.527
+
+XAUUSD | netas > 0: 0 de 24
+ horas  mecha  rr  exp_bruto  exp_neto     n   win  ci_lo  ci_hi   p  años_pos  stop_med  coste_R
+   8.0    0.4 1.0     -0.067    -0.317  3265 0.359 -0.353 -0.284 1.0         0     1.194    0.248
+   8.0    0.4 1.5     -0.057    -0.319  3196 0.288 -0.359 -0.275 1.0         0     1.186    0.250
+   4.0    0.4 1.0     -0.042    -0.321  6366 0.358 -0.345 -0.298 1.0         0     1.120    0.262
+   1.0    0.4 1.5     -0.015    -0.321 15783 0.290 -0.338 -0.302 1.0         0     1.047    0.279
+   2.0    0.4 2.0     -0.021    -0.323 11564 0.244 -0.347 -0.301 1.0         0     1.067    0.275
+   1.0    0.4 1.0     -0.032    -0.324 16910 0.359 -0.339 -0.309 1.0         0     1.053    0.278
+   2.0    0.4 1.0     -0.035    -0.324 12410 0.359 -0.342 -0.308 1.0         0     1.075    0.273
+   1.0    0.4 2.0     -0.012    -0.328 14873 0.242 -0.350 -0.308 1.0         0     1.047    0.279
+   2.0    0.4 1.5     -0.027    -0.328 11924 0.288 -0.350 -0.308 1.0         0     1.073    0.274
+   4.0    0.4 1.5     -0.040    -0.332  6193 0.285 -0.360 -0.302 1.0         0     1.109    0.265
+   8.0    0.4 2.0     -0.061    -0.332  3155 0.239 -0.375 -0.286 1.0         0     1.178    0.251
+   4.0    0.4 2.0     -0.035    -0.340  6088 0.238 -0.372 -0.307 1.0         0     1.105    0.266
+   1.0    0.0 1.5     -0.010    -0.347 25028 0.282 -0.359 -0.332 1.0         0     0.971    0.302
+   2.0    0.0 1.5     -0.011    -0.348 19281 0.281 -0.364 -0.331 1.0         0     0.971    0.302
+   4.0    0.0 1.5     -0.024    -0.348  9965 0.281 -0.373 -0.325 1.0         0     0.969    0.303
+   8.0    0.0 2.0     -0.029    -0.349  4868 0.235 -0.383 -0.314 1.0         0     1.011    0.292
+   2.0    0.0 1.0     -0.035    -0.350 20510 0.348 -0.364 -0.336 1.0         0     0.972    0.302
+   1.0    0.0 1.0     -0.031    -0.350 27726 0.348 -0.361 -0.339 1.0         0     0.972    0.301
+   2.0    0.0 2.0     -0.008    -0.352 18259 0.237 -0.371 -0.332 1.0         0     0.970    0.302
+   1.0    0.0 2.0     -0.010    -0.353 22895 0.236 -0.370 -0.336 1.0         0     0.971    0.302
+   8.0    0.0 1.5     -0.051    -0.354  4987 0.277 -0.388 -0.323 1.0         0     1.016    0.291
+   4.0    0.0 1.0     -0.041    -0.355 10390 0.345 -0.374 -0.338 1.0         0     0.975    0.301
+   4.0    0.0 2.0     -0.006    -0.361  9657 0.234 -0.388 -0.333 1.0         0     0.968    0.304
+   8.0    0.0 1.0     -0.073    -0.362  5147 0.340 -0.389 -0.339 1.0         0     1.020    0.290
+
+```
+
+### 2026-10-07 · XAUUSD y NAS100 · Rebote en nivel M5 con objetivo fijo pequeño (idea de John: "salir con unos pips")
+
+`scripts/tp_fijo.py`: `level_bounce` en M5 (niveles de 2 h y 8 h, mecha ≥ 40 %) con objetivo fijo de 5–40 pts en NAS100 y 0.5–4 $ en oro. El stop sigue detrás del nivel. **Todas pierden, también sin costes.** Un objetivo más pequeño sube el % de acierto pero baja la ganancia por acierto en la misma proporción.
+
+```
+NAS100 (resultado por operación en PUNTOS de precio)
+ horas_nivel   tp  pts_bruto  pts_neto     n  acierto  ci_lo  ci_hi  stop_med  total_pts
+         2.0  5.0     -1.230    -5.128 11864    0.354 -5.310 -4.951    10.361 -60836.147
+         2.0 10.0     -0.733    -4.897 11695    0.296 -5.116 -4.665    10.349 -57270.574
+         2.0 15.0     -0.561    -4.805 11517    0.253 -5.074 -4.534    10.345 -55338.378
+         2.0 20.0     -0.487    -4.684 11345    0.224 -4.985 -4.383    10.354 -53143.412
+         2.0 30.0     -0.218    -4.644 11006    0.183 -4.982 -4.304    10.415 -51114.058
+         2.0 40.0     -0.323    -4.576 10746    0.157 -4.971 -4.169    10.418 -49170.890
+         8.0  5.0     -1.330    -5.334  2776    0.403 -5.783 -4.875    12.249 -14807.956
+         8.0 10.0     -0.906    -5.169  2740    0.336 -5.697 -4.649    12.198 -14162.731
+         8.0 15.0     -0.527    -5.000  2716    0.293 -5.621 -4.417    12.134 -13578.899
+         8.0 20.0     -0.322    -4.738  2691    0.260 -5.434 -4.082    12.084 -12750.012
+         8.0 30.0     -0.179    -4.541  2662    0.214 -5.374 -3.747    11.977 -12087.046
+         8.0 40.0      0.079    -4.499  2637    0.182 -5.436 -3.593    11.887 -11864.706
+
+XAUUSD (resultado por operación en PUNTOS de precio)
+ horas_nivel  tp  pts_bruto  pts_neto     n  acierto  ci_lo  ci_hi  stop_med  total_pts
+         2.0 0.5     -0.087    -0.331 13114    0.494 -0.349 -0.314     1.088  -4336.824
+         2.0 1.0     -0.047    -0.310 12704    0.400 -0.333 -0.291     1.089  -3938.470
+         2.0 1.5     -0.047    -0.314 12356    0.334 -0.341 -0.289     1.091  -3884.344
+         2.0 2.0     -0.050    -0.315 12001    0.290 -0.345 -0.286     1.095  -3783.157
+         2.0 3.0     -0.053    -0.313 11402    0.233 -0.349 -0.276     1.102  -3566.140
+         2.0 4.0     -0.057    -0.325 10883    0.195 -0.370 -0.283     1.105  -3539.613
+         8.0 0.5     -0.165    -0.383  3409    0.503 -0.421 -0.345     1.213  -1306.550
+         8.0 1.0     -0.111    -0.361  3332    0.412 -0.402 -0.316     1.214  -1202.236
+         8.0 1.5     -0.117    -0.379  3275    0.341 -0.431 -0.321     1.212  -1241.837
+         8.0 2.0     -0.137    -0.380  3220    0.293 -0.444 -0.317     1.197  -1223.208
+         8.0 3.0     -0.110    -0.364  3180    0.237 -0.430 -0.291     1.196  -1156.835
+         8.0 4.0     -0.106    -0.371  3141    0.198 -0.452 -0.291     1.191  -1166.258
+
+```
+
+### 2026-10-07 · XAUUSD y NAS100 · Orden límite justo en el nivel (idea de John: "entrar donde se da vuelta")
+
+`scripts/limite_nivel.py`: compra límite en el soporte de las últimas 2/8 h (y venta en la resistencia), llenada solo si el ask llega al nivel. Stop 0.5/1/2·ATR(M5), gestión 1:1 o 1:2.
+
+**Aviso de método:** la primera versión daba +0.1 a +0.3 R bruto y oro ≈ 0 neto. Era un **sesgo de mirar el futuro**: exigía que la vela del llenado CERRARA por encima del nivel, cosa que no se sabe cuando la orden se llena. Corregido (solo se usa información hasta la vela anterior), el resultado es negativo **incluso sin costes**:
+
+```
+NAS100 — orden límite en el nivel (R por operación)
+ horas_nivel  stop_atrM5  rr  exp_bruto  exp_neto     n  acierto  ci_lo  ci_hi
+           2         0.5 1.0     -0.237    -0.743 14350    0.155 -0.755 -0.730
+           2         0.5 2.0     -0.210    -0.737 14127    0.106 -0.752 -0.721
+           2         1.0 1.0     -0.118    -0.473 13134    0.275 -0.488 -0.458
+           2         1.0 2.0     -0.115    -0.478 12098    0.185 -0.498 -0.457
+           2         2.0 1.0     -0.071    -0.263  9658    0.373 -0.281 -0.244
+           2         2.0 2.0     -0.059    -0.270  7947    0.268 -0.295 -0.243
+           8         0.5 1.0     -0.323    -0.769  3757    0.141 -0.791 -0.746
+           8         0.5 2.0     -0.275    -0.756  3752    0.099 -0.784 -0.729
+           8         1.0 1.0     -0.173    -0.503  3734    0.260 -0.532 -0.473
+           8         1.0 2.0     -0.176    -0.500  3673    0.177 -0.535 -0.462
+           8         2.0 1.0     -0.108    -0.295  3505    0.358 -0.326 -0.263
+           8         2.0 2.0     -0.098    -0.302  3294    0.257 -0.344 -0.262
+
+XAUUSD — orden límite en el nivel (R por operación)
+ horas_nivel  stop_atrM5  rr  exp_bruto  exp_neto     n  acierto  ci_lo  ci_hi
+           2         0.5 1.0     -0.135    -0.459 15878    0.303 -0.476 -0.445
+           2         0.5 2.0     -0.114    -0.458 15401    0.205 -0.479 -0.438
+           2         1.0 1.0     -0.068    -0.249 14462    0.389 -0.266 -0.233
+           2         1.0 2.0     -0.075    -0.253 12715    0.262 -0.277 -0.231
+           2         2.0 1.0     -0.035    -0.137 10357    0.438 -0.156 -0.118
+           2         2.0 2.0     -0.041    -0.147  7982    0.318 -0.173 -0.116
+           8         0.5 1.0     -0.236    -0.512  4212    0.276 -0.539 -0.484
+           8         0.5 2.0     -0.182    -0.495  4199    0.192 -0.531 -0.457
+           8         1.0 1.0     -0.114    -0.272  4182    0.378 -0.301 -0.243
+           8         1.0 2.0     -0.127    -0.311  4077    0.242 -0.351 -0.273
+           8         2.0 1.0     -0.061    -0.170  3928    0.420 -0.201 -0.142
+           8         2.0 2.0     -0.067    -0.170  3628    0.303 -0.211 -0.126
+
+```
+
+**Qué demuestra:** una orden límite en el nivel se llena justo cuando el precio lo atraviesa. Se llena en los rebotes y también en todas las rupturas (selección adversa). "Entrar justo en el giro" solo es posible sabiendo después que fue el giro.
